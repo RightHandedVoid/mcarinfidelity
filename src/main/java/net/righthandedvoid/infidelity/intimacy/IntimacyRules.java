@@ -8,6 +8,7 @@ import net.conczin.mca.entity.ai.relationship.EntityRelationship;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.righthandedvoid.infidelity.EligibilityResult;
+import net.righthandedvoid.infidelity.optin.OptIn;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -43,6 +44,9 @@ public final class IntimacyRules {
         try {
             // 1. Age. Always first, never skippable.
             if (!isAdultVillager(villager)) return EligibilityResult.NOT_ADULT;
+
+            // 1b. Opt-in. Second only to age.
+            if (!OptIn.isOptedIn(player)) return EligibilityResult.NOT_OPTED_IN;
 
             // 2. Basic validity.
             if (!isValidPlayer(player)) return EligibilityResult.INVALID_STATE;
@@ -85,6 +89,11 @@ public final class IntimacyRules {
     public static EligibilityResult check(ServerPlayer a, ServerPlayer b) {
         try {
             if (a == b || a.getUUID().equals(b.getUUID())) return EligibilityResult.INVALID_STATE;
+
+            // Opt-in. Both players, before anything else.
+            if (!OptIn.isOptedIn(a)) return EligibilityResult.NOT_OPTED_IN;
+            if (!OptIn.isOptedIn(b)) return EligibilityResult.PARTNER_NOT_OPTED_IN;
+
             if (!isValidPlayer(a) || !isValidPlayer(b)) return EligibilityResult.INVALID_STATE;
 
             Optional<EntityRelationship> relA = EntityRelationship.of(a);

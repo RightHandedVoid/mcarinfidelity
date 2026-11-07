@@ -27,6 +27,8 @@ bin/
 
 .DS_Store
 
+libs/
+
 run/
 run-client2/
 run-server/

@@ -130,7 +130,12 @@ public final class ConsentManager {
     public static String describe(RequestResult result) {
         return switch (result.outcome()) {
             case SENT -> null;
-            case NOT_ELIGIBLE -> "Not possible right now (" + result.eligibility() + ").";
+            case NOT_ELIGIBLE -> switch (result.eligibility()) {
+                case NOT_OPTED_IN -> "You haven't opted in. Use /intimacy optin to learn more.";
+                // Don't reveal another player's opt-in setting; to the asker it looks like any other "no".
+                case PARTNER_NOT_OPTED_IN -> "That isn't possible.";
+                default -> "Not possible right now (" + result.eligibility() + ").";
+            };
             case INVALID_TARGET -> "That isn't a valid target.";
             case ALREADY_REQUESTING -> "You already have a pending request. Use /intimacy cancel first.";
             case TARGET_BUSY -> "They already have a pending request.";
