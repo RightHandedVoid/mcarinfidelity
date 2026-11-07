@@ -8,6 +8,7 @@ import net.conczin.mca.entity.ai.relationship.EntityRelationship;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.righthandedvoid.infidelity.EligibilityResult;
+import net.righthandedvoid.infidelity.InfidelityConfig;
 import net.righthandedvoid.infidelity.optin.OptIn;
 
 import java.util.Optional;
@@ -24,15 +25,7 @@ import java.util.UUID;
  */
 public final class IntimacyRules {
 
-    // ---- Tunables (move these into a NeoForge ModConfigSpec later) ----
-    /** MCA reference points: friend = 40, engaged = 50, married = 100. */
-    public static final int MIN_HEARTS_NON_PARTNER = 75;
-    public static final int MIN_HEARTS_PARTNER = 25;
-    /** MCA mood runs -15..15 in normal play (can drop lower from mistreatment). */
-    public static final int MIN_MOOD = 0;
-    public static final double MAX_DISTANCE = 4.0;
-    /** Ticks after taking damage during which someone counts as busy (200 = 10s). */
-    public static final int RECENT_HURT_TICKS = 200;
+    // Tunables live in InfidelityConfig (editable in-game). The hard rules below are not configurable.
 
     private IntimacyRules() {}
 
@@ -69,11 +62,11 @@ public final class IntimacyRules {
             // 6. Affection. Partners need less, but still some.
             boolean partners = isRomanticPartner(villager, player.getUUID());
             int hearts = brain.getMemoriesForPlayer(player).getHearts();
-            int required = partners ? MIN_HEARTS_PARTNER : MIN_HEARTS_NON_PARTNER;
+            int required = partners ? InfidelityConfig.MIN_HEARTS_PARTNER.get() : InfidelityConfig.MIN_HEARTS_NON_PARTNER.get();
             if (hearts < required) return EligibilityResult.LOW_AFFECTION;
 
             // 7. Mood.
-            if (brain.getMoodValue() < MIN_MOOD) return EligibilityResult.BAD_MOOD;
+            if (brain.getMoodValue() < InfidelityConfig.MIN_MOOD.get()) return EligibilityResult.BAD_MOOD;
 
             return EligibilityResult.OK;
         } catch (Throwable t) {
@@ -135,12 +128,13 @@ public final class IntimacyRules {
     }
 
     private static boolean closeEnough(LivingEntity a, LivingEntity b) {
-        return a.level() == b.level() && a.distanceToSqr(b) <= MAX_DISTANCE * MAX_DISTANCE;
+        double max = InfidelityConfig.MAX_DISTANCE.get();
+        return a.level() == b.level() && a.distanceToSqr(b) <= max * max;
     }
 
     private static boolean isBusy(LivingEntity entity) {
         if (entity.isSleeping() || entity.isPassenger()) return true;
         int lastHurt = entity.getLastHurtByMobTimestamp();
-        return lastHurt > 0 && entity.tickCount - lastHurt < RECENT_HURT_TICKS;
+        return lastHurt > 0 && entity.tickCount - lastHurt < InfidelityConfig.ticks(InfidelityConfig.RECENT_HURT_SECONDS);
     }
 }

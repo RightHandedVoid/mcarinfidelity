@@ -1,5 +1,6 @@
 package net.righthandedvoid.infidelity.consent; // change to your package
 
+import net.righthandedvoid.infidelity.InfidelityConfig;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -30,9 +31,7 @@ import java.util.UUID;
 public final class ConsentManager {
 
     // ---- Tunables ----
-    public static final int TIMEOUT_TICKS = 20 * 30;            // player requests expire after 30s
-    public static final int VILLAGER_THINK_TICKS = 20 * 2;      // villagers answer after 2s
-    public static final int DECLINE_COOLDOWN_TICKS = 20 * 60;   // no re-asking the same target for 60s
+    // Timeouts and cooldowns live in InfidelityConfig.
     public static final int REVALIDATE_INTERVAL = 20;           // re-check pending requests every 1s
 
     public enum Outcome { SENT, NOT_ELIGIBLE, INVALID_TARGET, ALREADY_REQUESTING, TARGET_BUSY, ON_COOLDOWN, IN_SESSION }
@@ -155,8 +154,8 @@ public final class ConsentManager {
         for (ConsentRequest req : new ArrayList<>(BY_ID.values())) {
             long age = now - req.createdTick;
             if (req.targetIsVillager) {
-                if (age >= VILLAGER_THINK_TICKS) decideForVillager(req, server);
-            } else if (age >= TIMEOUT_TICKS) {
+                if (age >= InfidelityConfig.ticks(InfidelityConfig.VILLAGER_THINK_SECONDS)) decideForVillager(req, server);
+            } else if (age >= InfidelityConfig.ticks(InfidelityConfig.REQUEST_TIMEOUT_SECONDS)) {
                 finish(req, ConsentRequest.Status.TIMED_OUT, server);
             } else if (revalidate && !stillEligible(req, server)) {
                 finish(req, ConsentRequest.Status.INVALIDATED, server);
@@ -225,7 +224,7 @@ public final class ConsentManager {
         PENDING_BY_INITIATOR.remove(req.initiator, req.id);
 
         if (status == ConsentRequest.Status.DECLINED) {
-            COOLDOWNS.put(new PairKey(req.initiator, req.target), (long) server.getTickCount() + DECLINE_COOLDOWN_TICKS);
+            COOLDOWNS.put(new PairKey(req.initiator, req.target), (long) server.getTickCount() + InfidelityConfig.ticks(InfidelityConfig.DECLINE_COOLDOWN_SECONDS));
         }
 
         ServerPlayer targetPlayer = req.targetIsVillager ? null : server.getPlayerList().getPlayer(req.target);

@@ -9,6 +9,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
+import net.righthandedvoid.infidelity.InfidelityConfig;
 import net.righthandedvoid.infidelity.RelationshipContext;
 import net.righthandedvoid.infidelity.intimacy.IntimacyNetwork;
 import net.righthandedvoid.infidelity.intimacy.IntimacyRules;
@@ -29,10 +30,7 @@ import java.util.UUID;
  */
 public final class SessionManager {
 
-    // ---- Tunables ----
-    public static final int DEFAULT_DURATION_TICKS = 20 * 20;   // 20 seconds
-    public static final int HEARTS_ON_COMPLETE = 5;
-    public static final int MOOD_ON_COMPLETE = 3;
+    // Duration and rewards live in InfidelityConfig.
 
     public enum EndReason { COMPLETED, STOPPED, INTERRUPTED, DISCONNECTED }
 
@@ -64,7 +62,7 @@ public final class SessionManager {
         }
 
         IntimacySession session = new IntimacySession(req.initiator, req.target, req.targetIsVillager,
-            req.dimension, server.getTickCount(), DEFAULT_DURATION_TICKS, context);
+            req.dimension, server.getTickCount(), InfidelityConfig.ticks(InfidelityConfig.SESSION_DURATION_SECONDS), context);
         BY_ID.put(session.id, session);
         BY_PARTICIPANT.put(session.initiator, session.id);
         BY_PARTICIPANT.put(session.partner, session.id);
@@ -156,8 +154,8 @@ public final class SessionManager {
 
         if (resolve(server, session.dimension, session.partner) instanceof VillagerEntityMCA villager) {
             var brain = villager.getVillagerBrain();
-            brain.getMemoriesForPlayer(initiator).modHearts(HEARTS_ON_COMPLETE);
-            brain.modifyMoodValue(MOOD_ON_COMPLETE);
+            brain.getMemoriesForPlayer(initiator).modHearts(InfidelityConfig.HEARTS_ON_COMPLETE.get());
+            brain.modifyMoodValue(InfidelityConfig.MOOD_ON_COMPLETE.get());
             // TODO: if session.context shows cheating, hand off to the jealousy/consequences system.
         }
     }
