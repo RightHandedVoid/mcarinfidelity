@@ -13,6 +13,7 @@ import net.righthandedvoid.infidelity.EligibilityResult;
 import net.righthandedvoid.infidelity.intimacy.IntimacyNetwork;
 import net.righthandedvoid.infidelity.intimacy.IntimacyRules;
 import net.righthandedvoid.infidelity.intimacy.Privacy;
+import net.righthandedvoid.infidelity.cycle.FertilityCycle;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 
 import java.util.ArrayList;
@@ -223,7 +224,8 @@ public final class ConsentManager {
         // Eligible villagers still don't always say yes. More hearts = more likely.
         // TODO: factor in personality, interaction fatigue, time of day, etc.
         int hearts = villager.getVillagerBrain().getMemoriesForPlayer(initiator).getHearts();
-        double chance = Math.min(0.95, 0.5 + hearts / 200.0);
+        // A little more willing around ovulation, a little less while menstruating.
+        double chance = Math.min(0.95, 0.5 + hearts / 200.0 + FertilityCycle.willingnessModifier(villager));
         if (villager.getRandom().nextDouble() < chance) {
             // Her own view on protection, based on her lasting "wants children" preference.
             req.protectionUsed = req.protectionRequested || VillagerPreferences.wantsProtection(villager, initiator);

@@ -38,10 +38,15 @@ public final class InfidelityConfig {
     public static final ModConfigSpec.BooleanValue PRIVACY_INTERRUPTS_SESSIONS;
 
     // Pregnancy
-    public static final ModConfigSpec.DoubleValue CONCEPTION_CHANCE;
+    public static final ModConfigSpec.DoubleValue PEAK_CONCEPTION_CHANCE;
+    public static final ModConfigSpec.DoubleValue BASE_CONCEPTION_CHANCE;
     public static final ModConfigSpec.IntValue GESTATION_DAYS;
     public static final ModConfigSpec.IntValue RECOVERY_DAYS;
     public static final ModConfigSpec.BooleanValue NOTIFY_PREGNANT_PLAYERS;
+
+    // Cycle
+    public static final ModConfigSpec.IntValue CYCLE_LENGTH_DAYS;
+    public static final ModConfigSpec.IntValue CYCLE_SHARE_HEARTS;
 
     // Sessions
     public static final ModConfigSpec.IntValue SESSION_DURATION_SECONDS;
@@ -148,11 +153,16 @@ public final class InfidelityConfig {
             .translation(KEY + "pregnancy")
             .push("pregnancy");
 
-        CONCEPTION_CHANCE = b
-            .comment("Chance of conception after a completed, unprotected session between a fertile female and male.",
-                "Flat for now; the fertility cycle will replace this later.")
-            .translation(KEY + "conceptionChance")
-            .defineInRange("conceptionChance", 0.3, 0.0, 1.0);
+        PEAK_CONCEPTION_CHANCE = b
+            .comment("Chance of conception after a completed, unprotected session on the day of ovulation.",
+                "Falls to 40% of this at the edges of the fertile window.")
+            .translation(KEY + "peakConceptionChance")
+            .defineInRange("peakConceptionChance", 0.5, 0.0, 1.0);
+
+        BASE_CONCEPTION_CHANCE = b
+            .comment("Chance of conception outside the fertile window.")
+            .translation(KEY + "baseConceptionChance")
+            .defineInRange("baseConceptionChance", 0.02, 0.0, 1.0);
 
         GESTATION_DAYS = b
             .comment("Length of a pregnancy in Minecraft days (1 day = 20 minutes).")
@@ -168,6 +178,24 @@ public final class InfidelityConfig {
             .comment("Give pregnant players a subtle hint a quarter of the way through. Otherwise they find out at birth.")
             .translation(KEY + "notifyPregnantPlayers")
             .define("notifyPregnantPlayers", true);
+
+        b.pop();
+
+        b.comment("The fertility cycle of female players and villagers. Days are Minecraft days and follow the world clock,",
+                "so sleeping advances it. Everyone starts at a random point.")
+            .translation(KEY + "cycle")
+            .push("cycle");
+
+        CYCLE_LENGTH_DAYS = b
+            .comment("Length of a cycle in Minecraft days. 30 days is about 10 hours of play.",
+                "Menstruation, the fertile window and ovulation scale with it.")
+            .translation(KEY + "cycleLengthDays")
+            .defineInRange("cycleLengthDays", 30, 4, 60);
+
+        CYCLE_SHARE_HEARTS = b
+            .comment("Hearts a villager needs before telling a non-partner about her cycle (partners only need a decent mood).")
+            .translation(KEY + "cycleShareHearts")
+            .defineInRange("cycleShareHearts", 50, 0, 200);
 
         b.pop();
 

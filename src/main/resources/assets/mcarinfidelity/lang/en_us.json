@@ -41,8 +41,6 @@
   "mcarinfidelity.configuration.nonPartnerUnprotectedChance.tooltip": "For villagers who want children: chance per request to go without protection with someone who isn't their engaged or married partner.",
   "mcarinfidelity.configuration.pregnancy": "Pregnancy",
   "mcarinfidelity.configuration.pregnancy.tooltip": "Conception and gestation. Time counts while the carrier is loaded or online.",
-  "mcarinfidelity.configuration.conceptionChance": "Conception Chance",
-  "mcarinfidelity.configuration.conceptionChance.tooltip": "Chance of conception after a completed, unprotected session.",
   "mcarinfidelity.configuration.gestationDays": "Gestation (days)",
   "mcarinfidelity.configuration.gestationDays.tooltip": "Length of a pregnancy in Minecraft days (20 minutes each).",
   "mcarinfidelity.configuration.recoveryDays": "Recovery After Birth (days)",
@@ -58,5 +56,16 @@
   "mcarinfidelity.configuration.onlookerRadius": "Onlooker Radius",
   "mcarinfidelity.configuration.onlookerRadius.tooltip": "Blocks within which another player or villager with line of sight counts as watching.",
   "mcarinfidelity.configuration.privacyInterruptsSessions": "Onlookers Interrupt",
-  "mcarinfidelity.configuration.privacyInterruptsSessions.tooltip": "Villagers who care about privacy stop if someone comes into view during a session."
+  "mcarinfidelity.configuration.privacyInterruptsSessions.tooltip": "Villagers who care about privacy stop if someone comes into view during a session.",
+  "item.mcarinfidelity.cycle_journal": "Cycle Journal",
+  "mcarinfidelity.configuration.peakConceptionChance": "Peak Conception Chance",
+  "mcarinfidelity.configuration.peakConceptionChance.tooltip": "Chance of conception after an unprotected session on the day of ovulation.",
+  "mcarinfidelity.configuration.baseConceptionChance": "Base Conception Chance",
+  "mcarinfidelity.configuration.baseConceptionChance.tooltip": "Chance of conception outside the fertile window.",
+  "mcarinfidelity.configuration.cycle": "Fertility Cycle",
+  "mcarinfidelity.configuration.cycle.tooltip": "The cycle of female players and villagers. Follows the world clock.",
+  "mcarinfidelity.configuration.cycleLengthDays": "Cycle Length (days)",
+  "mcarinfidelity.configuration.cycleLengthDays.tooltip": "Length of a cycle in Minecraft days. Phases scale with it.",
+  "mcarinfidelity.configuration.cycleShareHearts": "Hearts to Share Cycle",
+  "mcarinfidelity.configuration.cycleShareHearts.tooltip": "Hearts a villager needs before telling a non-partner about her cycle."
 }

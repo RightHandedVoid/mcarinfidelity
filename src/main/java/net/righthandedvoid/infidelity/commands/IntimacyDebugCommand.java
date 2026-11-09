@@ -10,6 +10,7 @@ import net.righthandedvoid.infidelity.preference.PrivacyPreference;
 import net.righthandedvoid.infidelity.intimacy.Privacy;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 import net.righthandedvoid.infidelity.pregnancy.Gestation;
+import net.righthandedvoid.infidelity.cycle.FertilityCycle;
 import net.righthandedvoid.infidelity.pregnancy.PregnancyData;
 import net.righthandedvoid.infidelity.pregnancy.PregnancyManager;
 import net.minecraft.world.entity.LivingEntity;
@@ -33,6 +34,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
  *   /intimacydebug hearts <villager> <n>   -> sets that villager's hearts toward you
  *   /intimacydebug wantschildren <villager> [wants|doesnt|reroll]  -> shows or sets the lasting preference
  *   /intimacydebug privacy <villager> [home|private|anywhere|reroll]  -> shows/sets place preference and checks it here
+ *   /intimacydebug cycle <target> [day <n>]  -> shows the cycle and conception chance, or sets today's cycle day
  *   /intimacydebug conceive <target>        -> conception between you and target, ignoring chance (other gates apply)
  *   /intimacydebug pregnancy <target> [due|clear]  -> shows pregnancy state, skips to birth, or clears it
  *
@@ -79,6 +81,13 @@ public final class IntimacyDebugCommand {
                         .executes(ctx -> privacy(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), PrivacyPreference.ANYWHERE)))
                     .then(Commands.literal("reroll")
                         .executes(ctx -> privacy(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), PrivacyPreference.UNDECIDED)))))
+            .then(Commands.literal("cycle")
+                .then(Commands.argument("target", EntityArgument.entity())
+                    .executes(ctx -> cycle(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), 0))
+                    .then(Commands.literal("day")
+                        .then(Commands.argument("day", IntegerArgumentType.integer(1, 60))
+                            .executes(ctx -> cycle(ctx.getSource(), EntityArgument.getEntity(ctx, "target"),
+                                IntegerArgumentType.getInteger(ctx, "day")))))))
             .then(Commands.literal("conceive")
                 .then(Commands.argument("target", EntityArgument.entity())
                     .executes(ctx -> conceive(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
@@ -156,6 +165,24 @@ public final class IntimacyDebugCommand {
         var watchers = Privacy.onlookers(villager, player);
         reply(source, "Onlookers: " + (watchers.isEmpty() ? "none"
             : String.join(", ", watchers.stream().map(e -> e.getName().getString()).toList())));
+        return 1;
+    }
+
+    private static int cycle(CommandSourceStack source, Entity target, int setDay) {
+        if (!(target instanceof LivingEntity living)) {
+            reply(source, "Target must be a player or a villager.");
+            return 0;
+        }
+        if (!FertilityCycle.hasCycle(living)) {
+            reply(source, living.getName().getString() + " has no cycle (gender: " + PregnancyManager.genderOf(living) + ").");
+            return 0;
+        }
+        if (setDay > 0) FertilityCycle.setDay(living, Math.min(setDay, FertilityCycle.length()));
+        int length = FertilityCycle.length();
+        reply(source, living.getName().getString() + ": day " + FertilityCycle.day(living) + "/" + length
+            + " | " + FertilityCycle.phase(living)
+            + " | ovulation day " + FertilityCycle.ovulationDay(length) + " +/- " + FertilityCycle.fertileWindow(length)
+            + " | conception chance " + Math.round(FertilityCycle.conceptionChance(living) * 1000) / 10.0 + "%");
         return 1;
     }
 

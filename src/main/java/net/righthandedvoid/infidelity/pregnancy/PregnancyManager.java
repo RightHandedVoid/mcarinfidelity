@@ -19,6 +19,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.righthandedvoid.infidelity.InfidelityConfig;
 import net.righthandedvoid.infidelity.MCARInfidelity;
+import net.righthandedvoid.infidelity.cycle.FertilityCycle;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -82,7 +83,7 @@ public final class PregnancyManager {
             if (!SpeciesBreeding.sameSpecies(carrier, other)) return Result.INCOMPATIBLE;
 
             RandomSource random = carrier.getRandom();
-            if (!ignoreChance && random.nextDouble() >= InfidelityConfig.CONCEPTION_CHANCE.get()) {
+            if (!ignoreChance && random.nextDouble() >= FertilityCycle.conceptionChance(carrier)) {
                 return Result.CHANCE_FAILED;
             }
 
