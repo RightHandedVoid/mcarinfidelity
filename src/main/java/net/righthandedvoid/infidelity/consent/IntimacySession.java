@@ -18,11 +18,13 @@ public final class IntimacySession {
     public final int durationTicks;
     /** Captured at the start so consequences reflect the situation as it was. Null for player-player for now. */
     public final RelationshipContext context;
+    /** Agreed in the consent request. Conception (next step) reads this. */
+    public final boolean protectionUsed;
 
     boolean ended;
 
     IntimacySession(UUID initiator, UUID partner, boolean partnerIsVillager, ResourceKey<Level> dimension,
-                    long startTick, int durationTicks, RelationshipContext context) {
+                    long startTick, int durationTicks, RelationshipContext context, boolean protectionUsed) {
         this.initiator = initiator;
         this.partner = partner;
         this.partnerIsVillager = partnerIsVillager;
@@ -30,6 +32,7 @@ public final class IntimacySession {
         this.startTick = startTick;
         this.durationTicks = durationTicks;
         this.context = context;
+        this.protectionUsed = protectionUsed;
     }
 
     public boolean involves(UUID uuid) {

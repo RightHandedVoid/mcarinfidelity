@@ -8,6 +8,9 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.conczin.mca.entity.VillagerEntityMCA;
+import net.righthandedvoid.infidelity.consent.ConsentResponse;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -38,6 +41,7 @@ public final class ClientConsent {
     /** Active session, if any, and timing for the fade overlay. */
     private static UUID sessionId;
     private static String sessionPartner = "";
+    private static boolean sessionProtected;
     private static long fadeInStart;
     private static long fadeOutStart;
     private static final long FADE_MS = 1000;
@@ -45,6 +49,7 @@ public final class ClientConsent {
     /** The request currently addressed to this player, if any. */
     private static UUID pendingId;
     private static String pendingFrom;
+    private static boolean pendingProtection;
 
     private ClientConsent() {}
 
@@ -53,10 +58,12 @@ public final class ClientConsent {
     public static void onPrompt(IntimacyNetwork.ConsentPromptPayload payload) {
         pendingId = payload.requestId();
         pendingFrom = payload.initiatorName();
+        pendingProtection = payload.protection();
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
-            mc.player.displayClientMessage(Component.literal(pendingFrom + " is asking to be intimate with you. Press ")
+            mc.player.displayClientMessage(Component.literal(pendingFrom + " is asking to be intimate with you ("
+                    + (pendingProtection ? "with" : "without") + " protection). Press ")
                 .append(REVIEW_KEY.getTranslatedKeyMessage().copy().withStyle(ChatFormatting.YELLOW))
                 .append(" to respond."), false);
         }
@@ -77,6 +84,7 @@ public final class ClientConsent {
         if (payload.active()) {
             sessionId = payload.sessionId();
             sessionPartner = payload.partnerName();
+            sessionProtected = payload.protection();
             fadeInStart = System.currentTimeMillis();
             fadeOutStart = 0;
         } else if (payload.sessionId().equals(sessionId)) {
@@ -85,8 +93,8 @@ public final class ClientConsent {
         }
     }
 
-    static void sendResponse(UUID requestId, boolean accept) {
-        PacketDistributor.sendToServer(new IntimacyNetwork.ConsentResponsePayload(requestId, accept));
+    static void sendResponse(UUID requestId, ConsentResponse response) {
+        PacketDistributor.sendToServer(new IntimacyNetwork.ConsentResponsePayload(requestId, response));
     }
 
     // ---- Event wiring ----
@@ -123,7 +131,8 @@ public final class ClientConsent {
 
                     if (sessionId != null && alpha >= 1f) {
                         Minecraft mc = Minecraft.getInstance();
-                        graphics.drawCenteredString(mc.font, "With " + sessionPartner, w / 2, h / 2 - 10, 0xFFFFFF);
+                        graphics.drawCenteredString(mc.font, "With " + sessionPartner
+                            + (sessionProtected ? " (protected)" : " (unprotected)"), w / 2, h / 2 - 10, 0xFFFFFF);
                         graphics.drawCenteredString(mc.font,
                             Component.literal("Press ").append(REVIEW_KEY.getTranslatedKeyMessage())
                                 .append(" to stop at any time."),
@@ -146,8 +155,12 @@ public final class ClientConsent {
 
             while (REQUEST_KEY.consumeClick()) {
                 Entity target = mc.crosshairPickEntity;
-                if (target != null) {
-                    PacketDistributor.sendToServer(new IntimacyNetwork.RequestIntimacyPayload(target.getId()));
+                if (target instanceof Player || target instanceof VillagerEntityMCA) {
+                    // Pick protection first; the screen sends the request.
+                    mc.setScreen(new RequestScreen(target.getId(), target.getName().getString()));
+                } else if (target != null) {
+                    mc.player.displayClientMessage(Component.literal("That isn't a valid target.")
+                        .withStyle(ChatFormatting.GRAY), true);
                 }
             }
 
@@ -156,7 +169,7 @@ public final class ClientConsent {
                     // Stopping is always honored by the server, no questions asked.
                     PacketDistributor.sendToServer(IntimacyNetwork.StopSessionPayload.INSTANCE);
                 } else if (pendingId != null) {
-                    mc.setScreen(new ConsentPromptScreen(pendingId, pendingFrom));
+                    mc.setScreen(new ConsentPromptScreen(pendingId, pendingFrom, pendingProtection));
                 } else {
                     mc.player.displayClientMessage(Component.literal("No pending request.")
                         .withStyle(ChatFormatting.GRAY), true);

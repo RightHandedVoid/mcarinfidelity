@@ -32,5 +32,11 @@
   "mcarinfidelity.configuration.heartsOnComplete": "Hearts on Completion",
   "mcarinfidelity.configuration.heartsOnComplete.tooltip": "Hearts a villager gains when an interaction completes.",
   "mcarinfidelity.configuration.moodOnComplete": "Mood on Completion",
-  "mcarinfidelity.configuration.moodOnComplete.tooltip": "Mood a villager gains when an interaction completes."
+  "mcarinfidelity.configuration.moodOnComplete.tooltip": "Mood a villager gains when an interaction completes.",
+  "mcarinfidelity.configuration.villagers": "Villager Preferences",
+  "mcarinfidelity.configuration.villagers.tooltip": "Villagers' own preferences.",
+  "mcarinfidelity.configuration.wantsChildrenBaseChance": "Wants Children Chance",
+  "mcarinfidelity.configuration.wantsChildrenBaseChance.tooltip": "Chance a villager wants children, rolled once and kept. Personality shifts it. Only affects villagers that haven't rolled yet.",
+  "mcarinfidelity.configuration.nonPartnerUnprotectedChance": "Unprotected With Non-Partner",
+  "mcarinfidelity.configuration.nonPartnerUnprotectedChance.tooltip": "For villagers who want children: chance per request to go without protection with someone who isn't their engaged or married partner."
 }

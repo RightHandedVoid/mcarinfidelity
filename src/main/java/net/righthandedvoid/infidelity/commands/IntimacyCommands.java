@@ -15,14 +15,15 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.righthandedvoid.infidelity.consent.ConsentManager;
+import net.righthandedvoid.infidelity.consent.ConsentResponse;
 import net.righthandedvoid.infidelity.consent.SessionManager;
 import net.righthandedvoid.infidelity.optin.OptIn;
 
 /**
  * Player-facing consent commands. The [Accept]/[Decline] chat buttons run these.
  *
- *   /intimacy request <target>   (temporary trigger until shift-right-click is added)
- *   /intimacy accept
+ *   /intimacy request <target> [protected|unprotected]   (defaults to protected)
+ *   /intimacy accept [protected]
  *   /intimacy decline
  *   /intimacy cancel
  *   /intimacy stop      (ends an active session; always allowed)
@@ -40,9 +41,16 @@ public final class IntimacyCommands {
         event.getDispatcher().register(Commands.literal("intimacy")
             .then(Commands.literal("request")
                 .then(Commands.argument("target", EntityArgument.entity())
-                    .executes(ctx -> request(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
-            .then(Commands.literal("accept").executes(ctx -> respond(ctx.getSource(), true)))
-            .then(Commands.literal("decline").executes(ctx -> respond(ctx.getSource(), false)))
+                    .executes(ctx -> request(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), true))
+                    .then(Commands.literal("protected")
+                        .executes(ctx -> request(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), true)))
+                    .then(Commands.literal("unprotected")
+                        .executes(ctx -> request(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), false)))))
+            .then(Commands.literal("accept")
+                .executes(ctx -> respond(ctx.getSource(), ConsentResponse.ACCEPT))
+                .then(Commands.literal("protected")
+                    .executes(ctx -> respond(ctx.getSource(), ConsentResponse.ACCEPT_WITH_PROTECTION))))
+            .then(Commands.literal("decline").executes(ctx -> respond(ctx.getSource(), ConsentResponse.DECLINE)))
             .then(Commands.literal("cancel").executes(ctx -> cancel(ctx.getSource())))
             .then(Commands.literal("stop").executes(ctx -> stop(ctx.getSource())))
             .then(Commands.literal("optin")
@@ -52,18 +60,18 @@ public final class IntimacyCommands {
             .then(Commands.literal("status").executes(ctx -> status(ctx.getSource()))));
     }
 
-    private static int request(CommandSourceStack source, Entity target) throws CommandSyntaxException {
+    private static int request(CommandSourceStack source, Entity target, boolean protection) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        ConsentManager.RequestResult result = ConsentManager.request(player, target);
+        ConsentManager.RequestResult result = ConsentManager.request(player, target, protection);
 
         String text = ConsentManager.describe(result);
         if (text != null) player.sendSystemMessage(Component.literal(text).withStyle(ChatFormatting.GRAY));
         return result.outcome() == ConsentManager.Outcome.SENT ? 1 : 0;
     }
 
-    private static int respond(CommandSourceStack source, boolean accept) throws CommandSyntaxException {
+    private static int respond(CommandSourceStack source, ConsentResponse response) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        if (!ConsentManager.respond(player, accept)) {
+        if (!ConsentManager.respond(player, response)) {
             player.sendSystemMessage(Component.literal("You have no pending request.").withStyle(ChatFormatting.GRAY));
             return 0;
         }

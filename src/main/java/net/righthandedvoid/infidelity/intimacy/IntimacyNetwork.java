@@ -18,14 +18,15 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import net.righthandedvoid.infidelity.consent.ConsentManager;
+import net.righthandedvoid.infidelity.consent.ConsentResponse;
 import net.righthandedvoid.infidelity.consent.SessionManager;
 
 import java.util.UUID;
 
 /**
  * Packets:
- *   C2S RequestIntimacyPayload  - "I'm asking the entity I'm looking at" (server validates everything)
- *   C2S ConsentResponsePayload  - "I accept/decline request <id>"       (server checks it's theirs and pending)
+ *   C2S RequestIntimacyPayload  - "I'm asking this entity, with/without protection" (server validates everything)
+ *   C2S ConsentResponsePayload  - "I accept/accept with protection/decline request <id>" (server checks it's theirs)
  *   S2C ConsentPromptPayload    - "Someone is asking you"               (opens the prompt option on the client)
  *   S2C ConsentClosedPayload    - "That request is over"                (closes the prompt on the client)
  *   S2C SessionStatePayload     - "Your session started/ended"          (fade overlay on the client)
@@ -44,31 +45,36 @@ public final class IntimacyNetwork {
     // Payloads
     // =====================================================================
 
-    public record RequestIntimacyPayload(int entityId) implements CustomPacketPayload {
+    public record RequestIntimacyPayload(int entityId, boolean protection) implements CustomPacketPayload {
         public static final Type<RequestIntimacyPayload> TYPE = new Type<>(id("request_intimacy"));
-        public static final StreamCodec<ByteBuf, RequestIntimacyPayload> STREAM_CODEC =
-            ByteBufCodecs.VAR_INT.map(RequestIntimacyPayload::new, RequestIntimacyPayload::entityId);
+        public static final StreamCodec<ByteBuf, RequestIntimacyPayload> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.VAR_INT, RequestIntimacyPayload::entityId,
+            ByteBufCodecs.BOOL, RequestIntimacyPayload::protection,
+            RequestIntimacyPayload::new);
 
         @Override
         public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
-    public record ConsentResponsePayload(UUID requestId, boolean accept) implements CustomPacketPayload {
+    public record ConsentResponsePayload(UUID requestId, ConsentResponse response) implements CustomPacketPayload {
         public static final Type<ConsentResponsePayload> TYPE = new Type<>(id("consent_response"));
+        private static final StreamCodec<ByteBuf, ConsentResponse> RESPONSE_CODEC =
+            ByteBufCodecs.VAR_INT.map(ConsentResponse::fromId, ConsentResponse::ordinal);
         public static final StreamCodec<ByteBuf, ConsentResponsePayload> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, ConsentResponsePayload::requestId,
-            ByteBufCodecs.BOOL, ConsentResponsePayload::accept,
+            RESPONSE_CODEC, ConsentResponsePayload::response,
             ConsentResponsePayload::new);
 
         @Override
         public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
-    public record ConsentPromptPayload(UUID requestId, String initiatorName) implements CustomPacketPayload {
+    public record ConsentPromptPayload(UUID requestId, String initiatorName, boolean protection) implements CustomPacketPayload {
         public static final Type<ConsentPromptPayload> TYPE = new Type<>(id("consent_prompt"));
         public static final StreamCodec<ByteBuf, ConsentPromptPayload> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, ConsentPromptPayload::requestId,
             ByteBufCodecs.STRING_UTF8, ConsentPromptPayload::initiatorName,
+            ByteBufCodecs.BOOL, ConsentPromptPayload::protection,
             ConsentPromptPayload::new);
 
         @Override
@@ -84,12 +90,14 @@ public final class IntimacyNetwork {
         public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
-    public record SessionStatePayload(UUID sessionId, boolean active, String partnerName) implements CustomPacketPayload {
+    public record SessionStatePayload(UUID sessionId, boolean active, String partnerName, boolean protection)
+            implements CustomPacketPayload {
         public static final Type<SessionStatePayload> TYPE = new Type<>(id("session_state"));
         public static final StreamCodec<ByteBuf, SessionStatePayload> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, SessionStatePayload::sessionId,
             ByteBufCodecs.BOOL, SessionStatePayload::active,
             ByteBufCodecs.STRING_UTF8, SessionStatePayload::partnerName,
+            ByteBufCodecs.BOOL, SessionStatePayload::protection,
             SessionStatePayload::new);
 
         @Override
@@ -111,7 +119,7 @@ public final class IntimacyNetwork {
 
     @SubscribeEvent
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("1");
+        PayloadRegistrar registrar = event.registrar("2");
 
         registrar.playToServer(RequestIntimacyPayload.TYPE, RequestIntimacyPayload.STREAM_CODEC,
             IntimacyNetwork::handleRequest);
@@ -139,7 +147,7 @@ public final class IntimacyNetwork {
 
         // The client only names an entity. Everything else is decided here.
         Entity target = player.level().getEntity(payload.entityId());
-        ConsentManager.RequestResult result = ConsentManager.request(player, target);
+        ConsentManager.RequestResult result = ConsentManager.request(player, target, payload.protection());
 
         String text = ConsentManager.describe(result);
         if (text != null) player.sendSystemMessage(Component.literal(text).withStyle(ChatFormatting.GRAY));
@@ -147,7 +155,7 @@ public final class IntimacyNetwork {
 
     private static void handleResponse(ConsentResponsePayload payload, IPayloadContext ctx) {
         if (!(ctx.player() instanceof ServerPlayer player)) return;
-        ConsentManager.respond(player, payload.requestId(), payload.accept());
+        ConsentManager.respond(player, payload.requestId(), payload.response());
     }
 
     private static void handleStop(StopSessionPayload payload, IPayloadContext ctx) {

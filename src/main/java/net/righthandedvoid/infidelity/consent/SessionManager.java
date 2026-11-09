@@ -62,7 +62,8 @@ public final class SessionManager {
         }
 
         IntimacySession session = new IntimacySession(req.initiator, req.target, req.targetIsVillager,
-            req.dimension, server.getTickCount(), InfidelityConfig.ticks(InfidelityConfig.SESSION_DURATION_SECONDS), context);
+            req.dimension, server.getTickCount(), InfidelityConfig.ticks(InfidelityConfig.SESSION_DURATION_SECONDS), context,
+            req.protectionUsed());
         BY_ID.put(session.id, session);
         BY_PARTICIPANT.put(session.initiator, session.id);
         BY_PARTICIPANT.put(session.partner, session.id);
@@ -157,6 +158,7 @@ public final class SessionManager {
             brain.getMemoriesForPlayer(initiator).modHearts(InfidelityConfig.HEARTS_ON_COMPLETE.get());
             brain.modifyMoodValue(InfidelityConfig.MOOD_ON_COMPLETE.get());
             // TODO: if session.context shows cheating, hand off to the jealousy/consequences system.
+            // TODO (next step): if !session.protectionUsed, roll conception through MCA's Pregnancy.
         }
     }
 
@@ -167,12 +169,12 @@ public final class SessionManager {
         if (initiator != null) {
             String partnerName = partnerName(server, session, partnerPlayer);
             PacketDistributor.sendToPlayer(initiator,
-                new IntimacyNetwork.SessionStatePayload(session.id, active, partnerName));
+                new IntimacyNetwork.SessionStatePayload(session.id, active, partnerName, session.protectionUsed));
         }
         if (partnerPlayer != null) {
             String initiatorName = initiator != null ? initiator.getName().getString() : "";
             PacketDistributor.sendToPlayer(partnerPlayer,
-                new IntimacyNetwork.SessionStatePayload(session.id, active, initiatorName));
+                new IntimacyNetwork.SessionStatePayload(session.id, active, initiatorName, session.protectionUsed));
         }
     }
 

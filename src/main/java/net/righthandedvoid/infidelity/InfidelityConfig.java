@@ -29,6 +29,10 @@ public final class InfidelityConfig {
     public static final ModConfigSpec.IntValue VILLAGER_THINK_SECONDS;
     public static final ModConfigSpec.IntValue DECLINE_COOLDOWN_SECONDS;
 
+    // Villager preferences
+    public static final ModConfigSpec.DoubleValue WANTS_CHILDREN_BASE_CHANCE;
+    public static final ModConfigSpec.DoubleValue NON_PARTNER_UNPROTECTED_CHANCE;
+
     // Sessions
     public static final ModConfigSpec.IntValue SESSION_DURATION_SECONDS;
     public static final ModConfigSpec.IntValue HEARTS_ON_COMPLETE;
@@ -86,6 +90,24 @@ public final class InfidelityConfig {
             .comment("Seconds before a player can ask the same target again after being declined.")
             .translation(KEY + "declineCooldownSeconds")
             .defineInRange("declineCooldownSeconds", 60, 0, 3600);
+
+        b.pop();
+
+        b.comment("Villagers' own preferences.")
+            .translation(KEY + "villagers")
+            .push("villagers");
+
+        WANTS_CHILDREN_BASE_CHANCE = b
+            .comment("Chance a villager wants children, rolled once per villager and kept. Personality shifts it by up to 0.15.",
+                "Changing this only affects villagers that haven't rolled yet.")
+            .translation(KEY + "wantsChildrenBaseChance")
+            .defineInRange("wantsChildrenBaseChance", 0.5, 0.0, 1.0);
+
+        NON_PARTNER_UNPROTECTED_CHANCE = b
+            .comment("For villagers who want children: chance per request that they'll go without protection with someone",
+                "who isn't their engaged/married partner. Villagers who don't want children always insist on protection.")
+            .translation(KEY + "nonPartnerUnprotectedChance")
+            .defineInRange("nonPartnerUnprotectedChance", 0.05, 0.0, 1.0);
 
         b.pop();
 

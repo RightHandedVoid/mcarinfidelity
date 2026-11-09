@@ -12,6 +12,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.righthandedvoid.infidelity.EligibilityResult;
 import net.righthandedvoid.infidelity.intimacy.IntimacyNetwork;
 import net.righthandedvoid.infidelity.intimacy.IntimacyRules;
+import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,6 +28,9 @@ import java.util.UUID;
  *
  * Server thread only. The client can only name a target or answer a request ID it was sent;
  * it can never declare a request accepted.
+ *
+ * Protection is part of consent: the initiator picks protected or unprotected, and the responder
+ * (player or villager) can add protection but never remove it. If either side wants it, it's used.
  */
 public final class ConsentManager {
 
@@ -51,7 +55,7 @@ public final class ConsentManager {
     // Public API
     // =====================================================================
 
-    public static RequestResult request(ServerPlayer initiator, Entity target) {
+    public static RequestResult request(ServerPlayer initiator, Entity target, boolean protectionRequested) {
         MinecraftServer server = initiator.server;
         long now = server.getTickCount();
 
@@ -73,32 +77,35 @@ public final class ConsentManager {
         if (PENDING_BY_TARGET.containsKey(target.getUUID())) return result(Outcome.TARGET_BUSY);
 
         ConsentRequest req = new ConsentRequest(initiator.getUUID(), target.getUUID(),
-            target instanceof VillagerEntityMCA, initiator.level().dimension(), now);
+            target instanceof VillagerEntityMCA, initiator.level().dimension(), now, protectionRequested);
         BY_ID.put(req.id, req);
         PENDING_BY_TARGET.put(req.target, req.id);
         PENDING_BY_INITIATOR.put(req.initiator, req.id);
 
         if (target instanceof ServerPlayer targetPlayer) {
             PacketDistributor.sendToPlayer(targetPlayer,
-                new IntimacyNetwork.ConsentPromptPayload(req.id, initiator.getName().getString()));
-            gray(initiator, "Request sent to " + targetPlayer.getName().getString() + ".");
+                new IntimacyNetwork.ConsentPromptPayload(req.id, initiator.getName().getString(), protectionRequested));
+            gray(initiator, "Request sent to " + targetPlayer.getName().getString() + " (" + protectionLabel(protectionRequested) + ").");
         } else {
-            gray(initiator, "You ask " + target.getName().getString() + "...");
+            gray(initiator, "You ask " + target.getName().getString() + " (" + protectionLabel(protectionRequested) + ")...");
         }
         return result(Outcome.SENT);
     }
 
     /** A player answers a specific request. Ignored unless that request is pending and addressed to them. */
-    public static boolean respond(ServerPlayer responder, UUID requestId, boolean accept) {
+    public static boolean respond(ServerPlayer responder, UUID requestId, ConsentResponse response) {
         UUID pendingId = PENDING_BY_TARGET.get(responder.getUUID());
         if (pendingId == null || !pendingId.equals(requestId)) return false;
         ConsentRequest req = BY_ID.get(requestId);
         if (req == null || req.targetIsVillager) return false;
 
-        if (!accept) {
+        if (response == ConsentResponse.DECLINE) {
             finish(req, ConsentRequest.Status.DECLINED, responder.server);
             return true;
         }
+
+        // The responder can add protection, never remove it.
+        req.protectionUsed = req.protectionRequested || response == ConsentResponse.ACCEPT_WITH_PROTECTION;
 
         // Re-check at the moment of acceptance.
         ServerPlayer initiator = responder.server.getPlayerList().getPlayer(req.initiator);
@@ -111,9 +118,9 @@ public final class ConsentManager {
     }
 
     /** Answer whatever request is currently addressed to this player (used by the chat commands). */
-    public static boolean respond(ServerPlayer responder, boolean accept) {
+    public static boolean respond(ServerPlayer responder, ConsentResponse response) {
         UUID pendingId = PENDING_BY_TARGET.get(responder.getUUID());
-        return pendingId != null && respond(responder, pendingId, accept);
+        return pendingId != null && respond(responder, pendingId, response);
     }
 
     /** The initiator withdraws their pending request. */
@@ -209,6 +216,8 @@ public final class ConsentManager {
         int hearts = villager.getVillagerBrain().getMemoriesForPlayer(initiator).getHearts();
         double chance = Math.min(0.95, 0.5 + hearts / 200.0);
         if (villager.getRandom().nextDouble() < chance) {
+            // Her own view on protection, based on her lasting "wants children" preference.
+            req.protectionUsed = req.protectionRequested || VillagerPreferences.wantsProtection(villager, initiator);
             finish(req, ConsentRequest.Status.ACCEPTED, server);
         } else {
             gray(initiator, villager.getName().getString() + " gently turns you down this time.");
@@ -253,7 +262,7 @@ public final class ConsentManager {
             // Villager declines already sent their own message.
             if (initiator == null) return;
             switch (status) {
-                case ACCEPTED -> gray(initiator, "They said yes.");
+                case ACCEPTED -> gray(initiator, acceptedText("They said yes", req));
                 case CANCELLED -> gray(initiator, "Request cancelled.");
                 case INVALIDATED -> gray(initiator, "Request no longer possible.");
                 default -> {}
@@ -263,7 +272,7 @@ public final class ConsentManager {
 
         String targetName = targetPlayer != null ? targetPlayer.getName().getString() : "They";
         String toInitiator = switch (status) {
-            case ACCEPTED -> targetName + " accepted your request.";
+            case ACCEPTED -> acceptedText(targetName + " accepted", req);
             case DECLINED -> targetName + " declined your request.";
             case TIMED_OUT -> "Your request to " + targetName + " expired.";
             case CANCELLED -> "Request cancelled.";
@@ -271,7 +280,7 @@ public final class ConsentManager {
             case PENDING -> null;
         };
         String toTarget = switch (status) {
-            case ACCEPTED -> "You accepted " + initiatorName + "'s request.";
+            case ACCEPTED -> "You accepted " + initiatorName + "'s request (" + protectionLabel(req.protectionUsed) + ").";
             case DECLINED -> "You declined " + initiatorName + "'s request.";
             case TIMED_OUT -> initiatorName + "'s request expired.";
             case CANCELLED -> initiatorName + "'s request was cancelled.";
@@ -281,6 +290,16 @@ public final class ConsentManager {
 
         if (initiator != null && toInitiator != null) gray(initiator, toInitiator);
         if (targetPlayer != null && toTarget != null) gray(targetPlayer, toTarget);
+    }
+
+    /** "X accepted, but only with protection." when the responder added it; otherwise states what's used. */
+    private static String acceptedText(String prefix, ConsentRequest req) {
+        if (req.protectionUsed && !req.protectionRequested) return prefix + ", but only with protection.";
+        return prefix + " (" + protectionLabel(req.protectionUsed) + ").";
+    }
+
+    public static String protectionLabel(boolean protection) {
+        return protection ? "with protection" : "without protection";
     }
 
     private static Component villagerDeclineMessage(VillagerEntityMCA villager, EligibilityResult reason) {
