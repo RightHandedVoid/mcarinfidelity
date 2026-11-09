@@ -11,7 +11,8 @@ import java.util.UUID;
  */
 public final class ConsentRequest {
 
-    public enum Status { PENDING, ACCEPTED, DECLINED, TIMED_OUT, CANCELLED, INVALIDATED }
+    /** NOT_HERE: a villager would say yes, just not here. No cooldown, so you can ask again somewhere else. */
+    public enum Status { PENDING, ACCEPTED, DECLINED, NOT_HERE, TIMED_OUT, CANCELLED, INVALIDATED }
 
     public final UUID id = UUID.randomUUID();
     public final UUID initiator;          // always a player for now

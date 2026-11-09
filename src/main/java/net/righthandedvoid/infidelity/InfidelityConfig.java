@@ -32,6 +32,10 @@ public final class InfidelityConfig {
     // Villager preferences
     public static final ModConfigSpec.DoubleValue WANTS_CHILDREN_BASE_CHANCE;
     public static final ModConfigSpec.DoubleValue NON_PARTNER_UNPROTECTED_CHANCE;
+    public static final ModConfigSpec.DoubleValue PRIVACY_HOME_CHANCE;
+    public static final ModConfigSpec.DoubleValue PRIVACY_ANYWHERE_CHANCE;
+    public static final ModConfigSpec.IntValue ONLOOKER_RADIUS;
+    public static final ModConfigSpec.BooleanValue PRIVACY_INTERRUPTS_SESSIONS;
 
     // Pregnancy
     public static final ModConfigSpec.DoubleValue CONCEPTION_CHANCE;
@@ -115,6 +119,28 @@ public final class InfidelityConfig {
                 "who isn't their engaged/married partner. Villagers who don't want children always insist on protection.")
             .translation(KEY + "nonPartnerUnprotectedChance")
             .defineInRange("nonPartnerUnprotectedChance", 0.05, 0.0, 1.0);
+
+        PRIVACY_HOME_CHANCE = b
+            .comment("Chance a villager only wants to be intimate at her own home (with nobody watching).",
+                "Rolled once per villager. The rest want somewhere private, except those who don't care (below).",
+                "Personality shifts these by up to 0.15. Only affects villagers that haven't rolled yet.")
+            .translation(KEY + "privacyHomeChance")
+            .defineInRange("privacyHomeChance", 0.45, 0.0, 1.0);
+
+        PRIVACY_ANYWHERE_CHANCE = b
+            .comment("Chance a villager doesn't care where, or who's around.")
+            .translation(KEY + "privacyAnywhereChance")
+            .defineInRange("privacyAnywhereChance", 0.15, 0.0, 1.0);
+
+        ONLOOKER_RADIUS = b
+            .comment("Blocks within which another player or villager with line of sight counts as watching.")
+            .translation(KEY + "onlookerRadius")
+            .defineInRange("onlookerRadius", 12, 2, 48);
+
+        PRIVACY_INTERRUPTS_SESSIONS = b
+            .comment("Villagers who care about privacy stop if someone comes into view during a session.")
+            .translation(KEY + "privacyInterruptsSessions")
+            .define("privacyInterruptsSessions", true);
 
         b.pop();
 

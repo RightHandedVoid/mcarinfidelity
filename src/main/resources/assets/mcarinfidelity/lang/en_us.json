@@ -50,5 +50,13 @@
   "mcarinfidelity.configuration.notifyPregnantPlayers": "Hint to Pregnant Players",
   "mcarinfidelity.configuration.notifyPregnantPlayers.tooltip": "Pregnant players get a subtle hint a quarter of the way through.",
   "mcarinfidelity.configuration.skippedSessionSeconds": "Duration When Skipped (s)",
-  "mcarinfidelity.configuration.skippedSessionSeconds.tooltip": "How long the fade to black lasts when the scene is skipped."
+  "mcarinfidelity.configuration.skippedSessionSeconds.tooltip": "How long the fade to black lasts when the scene is skipped.",
+  "mcarinfidelity.configuration.privacyHomeChance": "Home Only Chance",
+  "mcarinfidelity.configuration.privacyHomeChance.tooltip": "Chance a villager only wants to be intimate at her own home. Rolled once per villager; personality shifts it.",
+  "mcarinfidelity.configuration.privacyAnywhereChance": "Doesn't Care Chance",
+  "mcarinfidelity.configuration.privacyAnywhereChance.tooltip": "Chance a villager doesn't mind where, or who's around. Everyone else wants somewhere private.",
+  "mcarinfidelity.configuration.onlookerRadius": "Onlooker Radius",
+  "mcarinfidelity.configuration.onlookerRadius.tooltip": "Blocks within which another player or villager with line of sight counts as watching.",
+  "mcarinfidelity.configuration.privacyInterruptsSessions": "Onlookers Interrupt",
+  "mcarinfidelity.configuration.privacyInterruptsSessions.tooltip": "Villagers who care about privacy stop if someone comes into view during a session."
 }

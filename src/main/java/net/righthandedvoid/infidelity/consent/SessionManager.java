@@ -13,6 +13,9 @@ import net.righthandedvoid.infidelity.InfidelityConfig;
 import net.righthandedvoid.infidelity.RelationshipContext;
 import net.righthandedvoid.infidelity.intimacy.IntimacyNetwork;
 import net.righthandedvoid.infidelity.intimacy.IntimacyRules;
+import net.righthandedvoid.infidelity.intimacy.Privacy;
+import net.righthandedvoid.infidelity.preference.PrivacyPreference;
+import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 import net.righthandedvoid.infidelity.optin.OptIn;
 import net.righthandedvoid.infidelity.pregnancy.PregnancyManager;
 
@@ -98,6 +101,8 @@ public final class SessionManager {
         for (IntimacySession session : new ArrayList<>(BY_ID.values())) {
             if (!stillValid(session, server)) {
                 end(session, EndReason.INTERRUPTED, server, null);
+            } else if (now % 20 == 0 && noticedOnlooker(session, server)) {
+                end(session, EndReason.INTERRUPTED, server, null);
             } else if (now - session.startTick >= session.durationTicks) {
                 end(session, EndReason.COMPLETED, server, null);
             } else {
@@ -131,6 +136,23 @@ public final class SessionManager {
         }
         ServerPlayer partner = server.getPlayerList().getPlayer(session.partner);
         return partner != null && IntimacyRules.check(initiator, partner).allowed();
+    }
+
+    /**
+     * Villagers who care about privacy stop if someone comes into view. Checked once a second.
+     * (Witnessed discovery will hook in here later, e.g. when the onlooker is her spouse.)
+     */
+    private static boolean noticedOnlooker(IntimacySession session, MinecraftServer server) {
+        if (!session.partnerIsVillager || !InfidelityConfig.PRIVACY_INTERRUPTS_SESSIONS.get()) return false;
+        ServerPlayer initiator = server.getPlayerList().getPlayer(session.initiator);
+        if (initiator == null) return false;
+        if (!(resolve(server, session.dimension, session.partner) instanceof VillagerEntityMCA villager)) return false;
+        if (VillagerPreferences.privacyPreference(villager) == PrivacyPreference.ANYWHERE) return false;
+        if (Privacy.onlookers(villager, initiator).isEmpty()) return false;
+
+        initiator.sendSystemMessage(Component.literal(villager.getName().getString()
+            + " notices someone nearby and stops.").withStyle(ChatFormatting.GRAY));
+        return true;
     }
 
     /** Keep the villager from wandering off mid-session. MCA's AI may need more than this; adjust if so. */

@@ -31,6 +31,11 @@ public final class VillagerPreferences {
             .serialize(Codec.STRING.xmap(ChildPreference::parse, ChildPreference::name))
             .build());
 
+    public static final Supplier<AttachmentType<PrivacyPreference>> PRIVACY_PREFERENCE =
+        ATTACHMENT_TYPES.register("privacy_preference", () -> AttachmentType.builder(() -> PrivacyPreference.UNDECIDED)
+            .serialize(Codec.STRING.xmap(PrivacyPreference::parse, PrivacyPreference::name))
+            .build());
+
     private VillagerPreferences() {}
 
     // =====================================================================
@@ -75,6 +80,53 @@ public final class VillagerPreferences {
         if (p == Personality.GLOOMY || p == Personality.CRABBY || p == Personality.GREEDY) return -0.15;
         if (p == Personality.ANXIOUS || p == Personality.INTROVERTED) return -0.05;
         return 0;   // FLIRTY, ODD, and anything added by other mods
+    }
+
+    // =====================================================================
+    // Where
+    // =====================================================================
+
+    public static PrivacyPreference privacyPreference(VillagerEntityMCA villager) {
+        PrivacyPreference pref = villager.getData(PRIVACY_PREFERENCE);
+        if (pref == PrivacyPreference.UNDECIDED) {
+            pref = rollPrivacy(villager, villager.getRandom());
+            villager.setData(PRIVACY_PREFERENCE, pref);
+        }
+        return pref;
+    }
+
+    /** For debug commands. UNDECIDED makes it re-roll next time. */
+    public static void setPrivacyPreference(VillagerEntityMCA villager, PrivacyPreference pref) {
+        villager.setData(PRIVACY_PREFERENCE, pref);
+    }
+
+    /**
+     * Base chances from config; PRIVATE gets whatever's left. Shy personalities lean toward home,
+     * outgoing ones toward not caring.
+     */
+    private static PrivacyPreference rollPrivacy(VillagerEntityMCA villager, RandomSource random) {
+        double home = InfidelityConfig.PRIVACY_HOME_CHANCE.get();
+        double anywhere = InfidelityConfig.PRIVACY_ANYWHERE_CHANCE.get();
+
+        Personality p = null;
+        try {
+            p = villager.getVillagerBrain().getPersonality();
+        } catch (Throwable ignored) {}
+        if (p == Personality.INTROVERTED || p == Personality.ANXIOUS || p == Personality.GLOOMY) {
+            home += 0.15;
+            anywhere -= 0.10;
+        } else if (p == Personality.EXTROVERTED || p == Personality.FLIRTY || p == Personality.PLAYFUL || p == Personality.ODD) {
+            home -= 0.15;
+            anywhere += 0.10;
+        }
+
+        home = Mth.clamp(home, 0.0, 1.0);
+        anywhere = Mth.clamp(anywhere, 0.0, 1.0 - home);
+
+        double roll = random.nextDouble();
+        if (roll < home) return PrivacyPreference.HOME;
+        if (roll < home + anywhere) return PrivacyPreference.ANYWHERE;
+        return PrivacyPreference.PRIVATE;
     }
 
     // =====================================================================

@@ -12,6 +12,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.righthandedvoid.infidelity.EligibilityResult;
 import net.righthandedvoid.infidelity.intimacy.IntimacyNetwork;
 import net.righthandedvoid.infidelity.intimacy.IntimacyRules;
+import net.righthandedvoid.infidelity.intimacy.Privacy;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 
 import java.util.ArrayList;
@@ -211,6 +212,14 @@ public final class ConsentManager {
             return;
         }
 
+        // Her place preference comes before the yes/no: "not here" isn't a "no", so no cooldown.
+        Privacy.PlaceResult place = Privacy.check(villager, initiator);
+        if (place != Privacy.PlaceResult.OK) {
+            gray(initiator, notHereText(villager, place));
+            finish(req, ConsentRequest.Status.NOT_HERE, server);
+            return;
+        }
+
         // Eligible villagers still don't always say yes. More hearts = more likely.
         // TODO: factor in personality, interaction fatigue, time of day, etc.
         int hearts = villager.getVillagerBrain().getMemoriesForPlayer(initiator).getHearts();
@@ -273,7 +282,7 @@ public final class ConsentManager {
         String targetName = targetPlayer != null ? targetPlayer.getName().getString() : "They";
         String toInitiator = switch (status) {
             case ACCEPTED -> acceptedText(targetName + " accepted", req);
-            case DECLINED -> targetName + " declined your request.";
+            case DECLINED, NOT_HERE -> targetName + " declined your request.";
             case TIMED_OUT -> "Your request to " + targetName + " expired.";
             case CANCELLED -> "Request cancelled.";
             case INVALIDATED -> "Your request to " + targetName + " is no longer possible.";
@@ -281,7 +290,7 @@ public final class ConsentManager {
         };
         String toTarget = switch (status) {
             case ACCEPTED -> "You accepted " + initiatorName + "'s request (" + protectionLabel(req.protectionUsed) + ").";
-            case DECLINED -> "You declined " + initiatorName + "'s request.";
+            case DECLINED, NOT_HERE -> "You declined " + initiatorName + "'s request.";
             case TIMED_OUT -> initiatorName + "'s request expired.";
             case CANCELLED -> initiatorName + "'s request was cancelled.";
             case INVALIDATED -> initiatorName + "'s request is no longer possible.";
@@ -296,6 +305,16 @@ public final class ConsentManager {
     private static String acceptedText(String prefix, ConsentRequest req) {
         if (req.protectionUsed && !req.protectionRequested) return prefix + ", but only with protection.";
         return prefix + " (" + protectionLabel(req.protectionUsed) + ").";
+    }
+
+    private static String notHereText(VillagerEntityMCA villager, Privacy.PlaceResult place) {
+        String name = villager.getName().getString();
+        return switch (place) {
+            case WANTS_HOME -> name + " would rather wait until you're at " + Privacy.possessive(villager) + " home.";
+            case WANTS_INDOORS -> name + " would rather go somewhere more private.";
+            case WATCHED -> name + " glances around. Not with someone watching.";
+            case OK -> name + " declines.";
+        };
     }
 
     public static String protectionLabel(boolean protection) {

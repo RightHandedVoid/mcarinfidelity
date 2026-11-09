@@ -6,6 +6,8 @@ import net.righthandedvoid.infidelity.EligibilityResult;
 import net.righthandedvoid.infidelity.RelationshipContext;
 import net.righthandedvoid.infidelity.intimacy.IntimacyRules;
 import net.righthandedvoid.infidelity.preference.ChildPreference;
+import net.righthandedvoid.infidelity.preference.PrivacyPreference;
+import net.righthandedvoid.infidelity.intimacy.Privacy;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 import net.righthandedvoid.infidelity.pregnancy.Gestation;
 import net.righthandedvoid.infidelity.pregnancy.PregnancyData;
@@ -30,6 +32,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
  *   /intimacydebug check <target>          -> prints the EligibilityResult and the data behind it
  *   /intimacydebug hearts <villager> <n>   -> sets that villager's hearts toward you
  *   /intimacydebug wantschildren <villager> [wants|doesnt|reroll]  -> shows or sets the lasting preference
+ *   /intimacydebug privacy <villager> [home|private|anywhere|reroll]  -> shows/sets place preference and checks it here
  *   /intimacydebug conceive <target>        -> conception between you and target, ignoring chance (other gates apply)
  *   /intimacydebug pregnancy <target> [due|clear]  -> shows pregnancy state, skips to birth, or clears it
  *
@@ -65,6 +68,17 @@ public final class IntimacyDebugCommand {
                         .executes(ctx -> childPref(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), ChildPreference.DOES_NOT_WANT)))
                     .then(Commands.literal("reroll")
                         .executes(ctx -> childPref(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), ChildPreference.UNDECIDED)))))
+            .then(Commands.literal("privacy")
+                .then(Commands.argument("target", EntityArgument.entity())
+                    .executes(ctx -> privacy(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), null))
+                    .then(Commands.literal("home")
+                        .executes(ctx -> privacy(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), PrivacyPreference.HOME)))
+                    .then(Commands.literal("private")
+                        .executes(ctx -> privacy(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), PrivacyPreference.PRIVATE)))
+                    .then(Commands.literal("anywhere")
+                        .executes(ctx -> privacy(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), PrivacyPreference.ANYWHERE)))
+                    .then(Commands.literal("reroll")
+                        .executes(ctx -> privacy(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), PrivacyPreference.UNDECIDED)))))
             .then(Commands.literal("conceive")
                 .then(Commands.argument("target", EntityArgument.entity())
                     .executes(ctx -> conceive(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
@@ -124,6 +138,24 @@ public final class IntimacyDebugCommand {
         if (set != null) VillagerPreferences.setChildPreference(villager, set);
         // Reading resolves UNDECIDED, so "reroll" shows the fresh result immediately.
         reply(source, villager.getName().getString() + ": " + VillagerPreferences.childPreference(villager));
+        return 1;
+    }
+
+    private static int privacy(CommandSourceStack source, Entity target, PrivacyPreference set) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!(target instanceof VillagerEntityMCA villager)) {
+            reply(source, "Target must be an MCA villager.");
+            return 0;
+        }
+        if (set != null) VillagerPreferences.setPrivacyPreference(villager, set);
+        reply(source, villager.getName().getString() + ": " + VillagerPreferences.privacyPreference(villager)
+            + " | here: " + Privacy.check(villager, player)
+            + " | has home: " + Privacy.homeBuilding(villager).isPresent()
+            + " | at home: " + Privacy.atHome(villager)
+            + " | sheltered: " + Privacy.isSheltered(villager));
+        var watchers = Privacy.onlookers(villager, player);
+        reply(source, "Onlookers: " + (watchers.isEmpty() ? "none"
+            : String.join(", ", watchers.stream().map(e -> e.getName().getString()).toList())));
         return 1;
     }
 
