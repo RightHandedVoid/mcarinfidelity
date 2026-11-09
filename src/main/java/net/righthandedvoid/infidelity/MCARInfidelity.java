@@ -10,6 +10,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.config.ModConfig;
 import net.righthandedvoid.infidelity.optin.OptIn;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
+import net.righthandedvoid.infidelity.pregnancy.PregnancyData;
 
 @Mod(MCARInfidelity.MODID)
 public class MCARInfidelity {
@@ -19,6 +20,7 @@ public class MCARInfidelity {
     public MCARInfidelity(IEventBus modEventBus, ModContainer modContainer) {
         OptIn.ATTACHMENT_TYPES.register(modEventBus);
         VillagerPreferences.ATTACHMENT_TYPES.register(modEventBus);
+        PregnancyData.ATTACHMENT_TYPES.register(modEventBus);
         modContainer.registerConfig(ModConfig.Type.SERVER, InfidelityConfig.SPEC);
     }
 }

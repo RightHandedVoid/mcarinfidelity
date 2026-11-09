@@ -7,6 +7,10 @@ import net.righthandedvoid.infidelity.RelationshipContext;
 import net.righthandedvoid.infidelity.intimacy.IntimacyRules;
 import net.righthandedvoid.infidelity.preference.ChildPreference;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
+import net.righthandedvoid.infidelity.pregnancy.Gestation;
+import net.righthandedvoid.infidelity.pregnancy.PregnancyData;
+import net.righthandedvoid.infidelity.pregnancy.PregnancyManager;
+import net.minecraft.world.entity.LivingEntity;
 import net.righthandedvoid.infidelity.MCARInfidelity; // change to your main mod class
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.commands.CommandSourceStack;
@@ -26,6 +30,8 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
  *   /intimacydebug check <target>          -> prints the EligibilityResult and the data behind it
  *   /intimacydebug hearts <villager> <n>   -> sets that villager's hearts toward you
  *   /intimacydebug wantschildren <villager> [wants|doesnt|reroll]  -> shows or sets the lasting preference
+ *   /intimacydebug conceive <target>        -> conception between you and target, ignoring chance (other gates apply)
+ *   /intimacydebug pregnancy <target> [due|clear]  -> shows pregnancy state, skips to birth, or clears it
  *
  * Example target: @e[type=mca:female_villager,sort=nearest,limit=1]
  */
@@ -58,7 +64,17 @@ public final class IntimacyDebugCommand {
                     .then(Commands.literal("doesnt")
                         .executes(ctx -> childPref(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), ChildPreference.DOES_NOT_WANT)))
                     .then(Commands.literal("reroll")
-                        .executes(ctx -> childPref(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), ChildPreference.UNDECIDED))))));
+                        .executes(ctx -> childPref(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), ChildPreference.UNDECIDED)))))
+            .then(Commands.literal("conceive")
+                .then(Commands.argument("target", EntityArgument.entity())
+                    .executes(ctx -> conceive(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
+            .then(Commands.literal("pregnancy")
+                .then(Commands.argument("target", EntityArgument.entity())
+                    .executes(ctx -> pregnancy(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), null))
+                    .then(Commands.literal("due")
+                        .executes(ctx -> pregnancy(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), "due")))
+                    .then(Commands.literal("clear")
+                        .executes(ctx -> pregnancy(ctx.getSource(), EntityArgument.getEntity(ctx, "target"), "clear"))))));
     }
 
     private static int check(CommandSourceStack source, Entity target) throws CommandSyntaxException {
@@ -108,6 +124,44 @@ public final class IntimacyDebugCommand {
         if (set != null) VillagerPreferences.setChildPreference(villager, set);
         // Reading resolves UNDECIDED, so "reroll" shows the fresh result immediately.
         reply(source, villager.getName().getString() + ": " + VillagerPreferences.childPreference(villager));
+        return 1;
+    }
+
+    private static int conceive(CommandSourceStack source, Entity target) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!(target instanceof LivingEntity living) || target == player) {
+            reply(source, "Target must be another player or a villager.");
+            return 0;
+        }
+        PregnancyManager.Result result = PregnancyManager.tryConceive(player, living, true);
+        reply(source, "Conception: " + result + " (you: " + PregnancyManager.genderOf(player)
+            + ", target: " + PregnancyManager.genderOf(living) + ")");
+        return result.conceived() ? 1 : 0;
+    }
+
+    private static int pregnancy(CommandSourceStack source, Entity target, String action) {
+        if (!(target instanceof LivingEntity living)) {
+            reply(source, "Target must be a player or a villager.");
+            return 0;
+        }
+        if ("due".equals(action)) {
+            reply(source, PregnancyManager.makeDue(living) ? "Due now; birth within a second." : "Not gestating.");
+            return 1;
+        }
+        if ("clear".equals(action)) {
+            PregnancyManager.clear(living);
+            reply(source, "Cleared.");
+            return 1;
+        }
+        String name = living.getName().getString();
+        reply(source, name + " | gender: " + PregnancyManager.genderOf(living)
+            + " | recovery ticks: " + PregnancyData.recoveryTicks(living)
+            + " | MCA/any pregnant: " + PregnancyData.isPregnant(living));
+        if (living.hasData(PregnancyData.GESTATION)) {
+            Gestation g = living.getData(PregnancyData.GESTATION);
+            reply(source, "Phase: " + g.phase() + " | " + g.elapsed() + "/" + g.duration() + " ticks ("
+                + Math.round(g.progress() * 100) + "%) | babies: " + g.babyCount() + " | father: " + g.fatherName);
+        }
         return 1;
     }
 

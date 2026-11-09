@@ -33,6 +33,12 @@ public final class InfidelityConfig {
     public static final ModConfigSpec.DoubleValue WANTS_CHILDREN_BASE_CHANCE;
     public static final ModConfigSpec.DoubleValue NON_PARTNER_UNPROTECTED_CHANCE;
 
+    // Pregnancy
+    public static final ModConfigSpec.DoubleValue CONCEPTION_CHANCE;
+    public static final ModConfigSpec.IntValue GESTATION_DAYS;
+    public static final ModConfigSpec.IntValue RECOVERY_DAYS;
+    public static final ModConfigSpec.BooleanValue NOTIFY_PREGNANT_PLAYERS;
+
     // Sessions
     public static final ModConfigSpec.IntValue SESSION_DURATION_SECONDS;
     public static final ModConfigSpec.IntValue HEARTS_ON_COMPLETE;
@@ -108,6 +114,33 @@ public final class InfidelityConfig {
                 "who isn't their engaged/married partner. Villagers who don't want children always insist on protection.")
             .translation(KEY + "nonPartnerUnprotectedChance")
             .defineInRange("nonPartnerUnprotectedChance", 0.05, 0.0, 1.0);
+
+        b.pop();
+
+        b.comment("Conception and gestation. Times count while the carrier is loaded (villagers) or online (players).")
+            .translation(KEY + "pregnancy")
+            .push("pregnancy");
+
+        CONCEPTION_CHANCE = b
+            .comment("Chance of conception after a completed, unprotected session between a fertile female and male.",
+                "Flat for now; the fertility cycle will replace this later.")
+            .translation(KEY + "conceptionChance")
+            .defineInRange("conceptionChance", 0.3, 0.0, 1.0);
+
+        GESTATION_DAYS = b
+            .comment("Length of a pregnancy in Minecraft days (1 day = 20 minutes).")
+            .translation(KEY + "gestationDays")
+            .defineInRange("gestationDays", 4, 1, 60);
+
+        RECOVERY_DAYS = b
+            .comment("Minecraft days after a birth before the mother can conceive again.")
+            .translation(KEY + "recoveryDays")
+            .defineInRange("recoveryDays", 2, 0, 30);
+
+        NOTIFY_PREGNANT_PLAYERS = b
+            .comment("Give pregnant players a subtle hint a quarter of the way through. Otherwise they find out at birth.")
+            .translation(KEY + "notifyPregnantPlayers")
+            .define("notifyPregnantPlayers", true);
 
         b.pop();
 

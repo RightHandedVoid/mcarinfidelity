@@ -38,5 +38,15 @@
   "mcarinfidelity.configuration.wantsChildrenBaseChance": "Wants Children Chance",
   "mcarinfidelity.configuration.wantsChildrenBaseChance.tooltip": "Chance a villager wants children, rolled once and kept. Personality shifts it. Only affects villagers that haven't rolled yet.",
   "mcarinfidelity.configuration.nonPartnerUnprotectedChance": "Unprotected With Non-Partner",
-  "mcarinfidelity.configuration.nonPartnerUnprotectedChance.tooltip": "For villagers who want children: chance per request to go without protection with someone who isn't their engaged or married partner."
+  "mcarinfidelity.configuration.nonPartnerUnprotectedChance.tooltip": "For villagers who want children: chance per request to go without protection with someone who isn't their engaged or married partner.",
+  "mcarinfidelity.configuration.pregnancy": "Pregnancy",
+  "mcarinfidelity.configuration.pregnancy.tooltip": "Conception and gestation. Time counts while the carrier is loaded or online.",
+  "mcarinfidelity.configuration.conceptionChance": "Conception Chance",
+  "mcarinfidelity.configuration.conceptionChance.tooltip": "Chance of conception after a completed, unprotected session.",
+  "mcarinfidelity.configuration.gestationDays": "Gestation (days)",
+  "mcarinfidelity.configuration.gestationDays.tooltip": "Length of a pregnancy in Minecraft days (20 minutes each).",
+  "mcarinfidelity.configuration.recoveryDays": "Recovery After Birth (days)",
+  "mcarinfidelity.configuration.recoveryDays.tooltip": "Days after a birth before the mother can conceive again.",
+  "mcarinfidelity.configuration.notifyPregnantPlayers": "Hint to Pregnant Players",
+  "mcarinfidelity.configuration.notifyPregnantPlayers.tooltip": "Pregnant players get a subtle hint a quarter of the way through."
 }

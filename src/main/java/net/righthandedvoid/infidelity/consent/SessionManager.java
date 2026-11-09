@@ -13,6 +13,7 @@ import net.righthandedvoid.infidelity.InfidelityConfig;
 import net.righthandedvoid.infidelity.RelationshipContext;
 import net.righthandedvoid.infidelity.intimacy.IntimacyNetwork;
 import net.righthandedvoid.infidelity.intimacy.IntimacyRules;
+import net.righthandedvoid.infidelity.pregnancy.PregnancyManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -151,14 +152,24 @@ public final class SessionManager {
     /** Consequences of a completed session. Jealousy/gossip from session.context go here later. */
     private static void applyOutcome(IntimacySession session, MinecraftServer server) {
         ServerPlayer initiator = server.getPlayerList().getPlayer(session.initiator);
-        if (initiator == null || !session.partnerIsVillager) return;
+        if (initiator == null) return;
 
-        if (resolve(server, session.dimension, session.partner) instanceof VillagerEntityMCA villager) {
-            var brain = villager.getVillagerBrain();
-            brain.getMemoriesForPlayer(initiator).modHearts(InfidelityConfig.HEARTS_ON_COMPLETE.get());
-            brain.modifyMoodValue(InfidelityConfig.MOOD_ON_COMPLETE.get());
-            // TODO: if session.context shows cheating, hand off to the jealousy/consequences system.
-            // TODO (next step): if !session.protectionUsed, roll conception through MCA's Pregnancy.
+        net.minecraft.world.entity.LivingEntity partner = null;
+        if (session.partnerIsVillager) {
+            if (resolve(server, session.dimension, session.partner) instanceof VillagerEntityMCA villager) {
+                partner = villager;
+                var brain = villager.getVillagerBrain();
+                brain.getMemoriesForPlayer(initiator).modHearts(InfidelityConfig.HEARTS_ON_COMPLETE.get());
+                brain.modifyMoodValue(InfidelityConfig.MOOD_ON_COMPLETE.get());
+                // TODO: if session.context shows cheating, hand off to the jealousy/consequences system.
+            }
+        } else {
+            partner = server.getPlayerList().getPlayer(session.partner);
+        }
+
+        // Silent either way; the carrier finds out later.
+        if (partner != null && !session.protectionUsed) {
+            PregnancyManager.tryConceive(initiator, partner, false);
         }
     }
 
