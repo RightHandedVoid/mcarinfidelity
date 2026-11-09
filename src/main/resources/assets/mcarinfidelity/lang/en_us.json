@@ -27,8 +27,8 @@
   "mcarinfidelity.configuration.declineCooldownSeconds.tooltip": "Seconds before asking the same target again after a decline.",
   "mcarinfidelity.configuration.session": "Sessions",
   "mcarinfidelity.configuration.session.tooltip": "Active interaction settings.",
-  "mcarinfidelity.configuration.sessionDurationSeconds": "Duration (s)",
-  "mcarinfidelity.configuration.sessionDurationSeconds.tooltip": "How long an interaction lasts. Either participant can stop at any time.",
+  "mcarinfidelity.configuration.sessionDurationSeconds": "Duration With Scene (s)",
+  "mcarinfidelity.configuration.sessionDurationSeconds.tooltip": "How long an interaction lasts when the scene is shown. Either participant can stop at any time.",
   "mcarinfidelity.configuration.heartsOnComplete": "Hearts on Completion",
   "mcarinfidelity.configuration.heartsOnComplete.tooltip": "Hearts a villager gains when an interaction completes.",
   "mcarinfidelity.configuration.moodOnComplete": "Mood on Completion",
@@ -48,5 +48,7 @@
   "mcarinfidelity.configuration.recoveryDays": "Recovery After Birth (days)",
   "mcarinfidelity.configuration.recoveryDays.tooltip": "Days after a birth before the mother can conceive again.",
   "mcarinfidelity.configuration.notifyPregnantPlayers": "Hint to Pregnant Players",
-  "mcarinfidelity.configuration.notifyPregnantPlayers.tooltip": "Pregnant players get a subtle hint a quarter of the way through."
+  "mcarinfidelity.configuration.notifyPregnantPlayers.tooltip": "Pregnant players get a subtle hint a quarter of the way through.",
+  "mcarinfidelity.configuration.skippedSessionSeconds": "Duration When Skipped (s)",
+  "mcarinfidelity.configuration.skippedSessionSeconds.tooltip": "How long the fade to black lasts when the scene is skipped."
 }

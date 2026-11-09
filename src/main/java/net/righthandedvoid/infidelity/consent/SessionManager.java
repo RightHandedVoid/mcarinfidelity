@@ -13,6 +13,7 @@ import net.righthandedvoid.infidelity.InfidelityConfig;
 import net.righthandedvoid.infidelity.RelationshipContext;
 import net.righthandedvoid.infidelity.intimacy.IntimacyNetwork;
 import net.righthandedvoid.infidelity.intimacy.IntimacyRules;
+import net.righthandedvoid.infidelity.optin.OptIn;
 import net.righthandedvoid.infidelity.pregnancy.PregnancyManager;
 
 import java.util.ArrayList;
@@ -62,9 +63,16 @@ public final class SessionManager {
             context = RelationshipContext.of(villager, initiator);
         }
 
+        // Like protection, but the other way round: a scene plays only if every player involved wants it.
+        // Villagers have no preference, so it's down to the player(s). Nobody is told who skipped.
+        boolean showScene = OptIn.wantsScenes(initiator)
+            && (req.targetIsVillager || OptIn.wantsScenes(server.getPlayerList().getPlayer(req.target)));
+        int duration = InfidelityConfig.ticks(showScene
+            ? InfidelityConfig.SESSION_DURATION_SECONDS
+            : InfidelityConfig.SKIPPED_SESSION_SECONDS);
+
         IntimacySession session = new IntimacySession(req.initiator, req.target, req.targetIsVillager,
-            req.dimension, server.getTickCount(), InfidelityConfig.ticks(InfidelityConfig.SESSION_DURATION_SECONDS), context,
-            req.protectionUsed());
+            req.dimension, server.getTickCount(), duration, context, req.protectionUsed(), showScene);
         BY_ID.put(session.id, session);
         BY_PARTICIPANT.put(session.initiator, session.id);
         BY_PARTICIPANT.put(session.partner, session.id);
@@ -180,12 +188,14 @@ public final class SessionManager {
         if (initiator != null) {
             String partnerName = partnerName(server, session, partnerPlayer);
             PacketDistributor.sendToPlayer(initiator,
-                new IntimacyNetwork.SessionStatePayload(session.id, active, partnerName, session.protectionUsed));
+                new IntimacyNetwork.SessionStatePayload(session.id, active, partnerName, session.protectionUsed,
+                    session.showScene));
         }
         if (partnerPlayer != null) {
             String initiatorName = initiator != null ? initiator.getName().getString() : "";
             PacketDistributor.sendToPlayer(partnerPlayer,
-                new IntimacyNetwork.SessionStatePayload(session.id, active, initiatorName, session.protectionUsed));
+                new IntimacyNetwork.SessionStatePayload(session.id, active, initiatorName, session.protectionUsed,
+                    session.showScene));
         }
     }
 

@@ -42,6 +42,8 @@ public final class ClientConsent {
     private static UUID sessionId;
     private static String sessionPartner = "";
     private static boolean sessionProtected;
+    /** True when the scene plays instead of fading to black. Animation playback hooks in here later. */
+    private static boolean sessionShowScene;
     private static long fadeInStart;
     private static long fadeOutStart;
     private static final long FADE_MS = 1000;
@@ -85,11 +87,13 @@ public final class ClientConsent {
             sessionId = payload.sessionId();
             sessionPartner = payload.partnerName();
             sessionProtected = payload.protection();
+            sessionShowScene = payload.showScene();
             fadeInStart = System.currentTimeMillis();
             fadeOutStart = 0;
         } else if (payload.sessionId().equals(sessionId)) {
             sessionId = null;
-            fadeOutStart = System.currentTimeMillis();
+            // Only fade back in if we faded out in the first place.
+            fadeOutStart = sessionShowScene ? 0 : System.currentTimeMillis();
         }
     }
 
@@ -112,6 +116,16 @@ public final class ClientConsent {
         public static void registerOverlay(RegisterGuiLayersEvent event) {
             event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MCARInfidelity.MODID, "session_fade"),
                 (graphics, deltaTracker) -> {
+                    if (sessionId != null && sessionShowScene) {
+                        // Scene mode: no fade, just the stop reminder at the top of the screen.
+                        // TODO: start/stop the scene's animation here once animations exist.
+                        Minecraft mc = Minecraft.getInstance();
+                        graphics.drawCenteredString(mc.font,
+                            Component.literal("With " + sessionPartner + (sessionProtected ? " (protected)" : " (unprotected)")
+                                + ". Press ").append(REVIEW_KEY.getTranslatedKeyMessage()).append(" to stop at any time."),
+                            graphics.guiWidth() / 2, 8, 0xFFFFFF);
+                        return;
+                    }
                     long now = System.currentTimeMillis();
                     float alpha;
                     if (sessionId != null) {

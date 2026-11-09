@@ -41,6 +41,7 @@ public final class InfidelityConfig {
 
     // Sessions
     public static final ModConfigSpec.IntValue SESSION_DURATION_SECONDS;
+    public static final ModConfigSpec.IntValue SKIPPED_SESSION_SECONDS;
     public static final ModConfigSpec.IntValue HEARTS_ON_COMPLETE;
     public static final ModConfigSpec.IntValue MOOD_ON_COMPLETE;
 
@@ -149,9 +150,14 @@ public final class InfidelityConfig {
             .push("session");
 
         SESSION_DURATION_SECONDS = b
-            .comment("How long an interaction lasts, in seconds. Either participant can still stop at any time.")
+            .comment("How long an interaction lasts when the scene is shown, in seconds. Either participant can stop at any time.")
             .translation(KEY + "sessionDurationSeconds")
             .defineInRange("sessionDurationSeconds", 20, 5, 600);
+
+        SKIPPED_SESSION_SECONDS = b
+            .comment("How long the fade to black lasts when the scene is skipped.")
+            .translation(KEY + "skippedSessionSeconds")
+            .defineInRange("skippedSessionSeconds", 5, 1, 60);
 
         HEARTS_ON_COMPLETE = b
             .comment("Hearts a villager gains when an interaction completes.")

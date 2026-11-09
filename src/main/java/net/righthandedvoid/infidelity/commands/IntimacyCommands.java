@@ -29,6 +29,7 @@ import net.righthandedvoid.infidelity.optin.OptIn;
  *   /intimacy stop      (ends an active session; always allowed)
  *   /intimacy optin     (explains, then asks for confirmation)
  *   /intimacy optout    (immediate, no confirmation)
+ *   /intimacy scenes [on|off]   (see scenes or skip them; in player-to-player, if either skips, both skip)
  *   /intimacy status
  */
 @EventBusSubscriber(modid = MCARInfidelity.MODID)
@@ -57,6 +58,10 @@ public final class IntimacyCommands {
                 .executes(ctx -> explainOptIn(ctx.getSource()))
                 .then(Commands.literal("confirm").executes(ctx -> confirmOptIn(ctx.getSource()))))
             .then(Commands.literal("optout").executes(ctx -> optOut(ctx.getSource())))
+            .then(Commands.literal("scenes")
+                .executes(ctx -> scenes(ctx.getSource(), null))
+                .then(Commands.literal("on").executes(ctx -> scenes(ctx.getSource(), true)))
+                .then(Commands.literal("off").executes(ctx -> scenes(ctx.getSource(), false))))
             .then(Commands.literal("status").executes(ctx -> status(ctx.getSource()))));
     }
 
@@ -136,6 +141,21 @@ public final class IntimacyCommands {
     private static int status(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
         gray(player, OptIn.isOptedIn(player) ? "You're opted in." : "You're not opted in.");
+        gray(player, OptIn.wantsScenes(player) ? "Scenes: shown." : "Scenes: skipped.");
+        return 1;
+    }
+
+    private static int scenes(CommandSourceStack source, Boolean show) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (show == null) {
+            gray(player, (OptIn.wantsScenes(player) ? "Scenes are shown." : "Scenes are skipped.")
+                + " Use /intimacy scenes on|off to change it.");
+            return 1;
+        }
+        OptIn.setWantsScenes(player, show);
+        gray(player, show
+            ? "Scenes will be shown. With another player, they're only shown if both of you have this on."
+            : "Scenes will be skipped (fade to black).");
         return 1;
     }
 

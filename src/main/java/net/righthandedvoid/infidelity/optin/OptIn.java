@@ -28,7 +28,25 @@ public final class OptIn {
                     .copyOnDeath()
                     .build());
 
+    /**
+     * Whether this player wants to see scenes rather than skip them (fade to black). Off by default.
+     * In player-to-player sessions both must want it; if either skips, it's skipped for both.
+     */
+    public static final Supplier<AttachmentType<Boolean>> SHOW_SCENES = ATTACHMENT_TYPES.register("show_scenes",
+            () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .copyOnDeath()
+                    .build());
+
     private OptIn() {}
+
+    public static boolean wantsScenes(ServerPlayer player) {
+        return player != null && player.getData(SHOW_SCENES);
+    }
+
+    public static void setWantsScenes(ServerPlayer player, boolean show) {
+        player.setData(SHOW_SCENES, show);
+    }
 
     public static boolean isOptedIn(ServerPlayer player) {
         return player != null && player.getData(OPTED_IN);

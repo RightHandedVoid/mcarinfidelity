@@ -90,14 +90,15 @@ public final class IntimacyNetwork {
         public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
-    public record SessionStatePayload(UUID sessionId, boolean active, String partnerName, boolean protection)
-            implements CustomPacketPayload {
+    public record SessionStatePayload(UUID sessionId, boolean active, String partnerName, boolean protection,
+                                      boolean showScene) implements CustomPacketPayload {
         public static final Type<SessionStatePayload> TYPE = new Type<>(id("session_state"));
         public static final StreamCodec<ByteBuf, SessionStatePayload> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, SessionStatePayload::sessionId,
             ByteBufCodecs.BOOL, SessionStatePayload::active,
             ByteBufCodecs.STRING_UTF8, SessionStatePayload::partnerName,
             ByteBufCodecs.BOOL, SessionStatePayload::protection,
+            ByteBufCodecs.BOOL, SessionStatePayload::showScene,
             SessionStatePayload::new);
 
         @Override
@@ -119,7 +120,7 @@ public final class IntimacyNetwork {
 
     @SubscribeEvent
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("2");
+        PayloadRegistrar registrar = event.registrar("3");
 
         registrar.playToServer(RequestIntimacyPayload.TYPE, RequestIntimacyPayload.STREAM_CODEC,
             IntimacyNetwork::handleRequest);

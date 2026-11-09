@@ -20,11 +20,14 @@ public final class IntimacySession {
     public final RelationshipContext context;
     /** Agreed in the consent request. Conception (next step) reads this. */
     public final boolean protectionUsed;
+    /** Decided at the start: true only if every player involved has scenes on. Otherwise it's skipped. */
+    public final boolean showScene;
 
     boolean ended;
 
     IntimacySession(UUID initiator, UUID partner, boolean partnerIsVillager, ResourceKey<Level> dimension,
-                    long startTick, int durationTicks, RelationshipContext context, boolean protectionUsed) {
+                    long startTick, int durationTicks, RelationshipContext context, boolean protectionUsed,
+                    boolean showScene) {
         this.initiator = initiator;
         this.partner = partner;
         this.partnerIsVillager = partnerIsVillager;
@@ -33,6 +36,7 @@ public final class IntimacySession {
         this.durationTicks = durationTicks;
         this.context = context;
         this.protectionUsed = protectionUsed;
+        this.showScene = showScene;
     }
 
     public boolean involves(UUID uuid) {
