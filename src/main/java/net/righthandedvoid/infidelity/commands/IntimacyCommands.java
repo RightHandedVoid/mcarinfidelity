@@ -16,6 +16,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.righthandedvoid.infidelity.consent.ConsentManager;
 import net.righthandedvoid.infidelity.consent.ConsentResponse;
+import net.righthandedvoid.infidelity.consent.VillagerOffers;
 import net.righthandedvoid.infidelity.consent.SessionManager;
 import net.righthandedvoid.infidelity.optin.OptIn;
 
@@ -30,6 +31,7 @@ import net.righthandedvoid.infidelity.optin.OptIn;
  *   /intimacy optin     (explains, then asks for confirmation)
  *   /intimacy optout    (immediate, no confirmation)
  *   /intimacy scenes [on|off]   (see scenes or skip them; in player-to-player, if either skips, both skip)
+ *   /intimacy offers [on|off]   (whether villagers may make offers to you; on by default)
  *   /intimacy status
  */
 @EventBusSubscriber(modid = MCARInfidelity.MODID)
@@ -62,6 +64,10 @@ public final class IntimacyCommands {
                 .executes(ctx -> scenes(ctx.getSource(), null))
                 .then(Commands.literal("on").executes(ctx -> scenes(ctx.getSource(), true)))
                 .then(Commands.literal("off").executes(ctx -> scenes(ctx.getSource(), false))))
+            .then(Commands.literal("offers")
+                .executes(ctx -> offers(ctx.getSource(), null))
+                .then(Commands.literal("on").executes(ctx -> offers(ctx.getSource(), true)))
+                .then(Commands.literal("off").executes(ctx -> offers(ctx.getSource(), false))))
             .then(Commands.literal("status").executes(ctx -> status(ctx.getSource()))));
     }
 
@@ -85,7 +91,10 @@ public final class IntimacyCommands {
 
     private static int cancel(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        if (!ConsentManager.cancel(player)) {
+        // Cancels your outgoing request and/or a villager leading you somewhere.
+        boolean cancelledRequest = ConsentManager.cancel(player);
+        boolean cancelledWalk = VillagerOffers.cancelFor(player);
+        if (!cancelledRequest && !cancelledWalk) {
             player.sendSystemMessage(Component.literal("You have no outgoing request.").withStyle(ChatFormatting.GRAY));
             return 0;
         }
@@ -142,6 +151,22 @@ public final class IntimacyCommands {
         ServerPlayer player = source.getPlayerOrException();
         gray(player, OptIn.isOptedIn(player) ? "You're opted in." : "You're not opted in.");
         gray(player, OptIn.wantsScenes(player) ? "Scenes: shown." : "Scenes: skipped.");
+        gray(player, player.getData(OptIn.ALLOW_OFFERS) ? "Villager offers: allowed." : "Villager offers: off.");
+        return 1;
+    }
+
+    private static int offers(CommandSourceStack source, Boolean allow) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (allow == null) {
+            gray(player, (player.getData(OptIn.ALLOW_OFFERS) ? "Villagers may make offers to you." : "Villager offers are off.")
+                + " Use /intimacy offers on|off to change it.");
+            return 1;
+        }
+        OptIn.setAllowsOffers(player, allow);
+        if (!allow) VillagerOffers.cancelFor(player);
+        gray(player, allow
+            ? "Villagers may make offers to you. You can always decline."
+            : "Villagers won't make offers to you. You can still ask them.");
         return 1;
     }
 

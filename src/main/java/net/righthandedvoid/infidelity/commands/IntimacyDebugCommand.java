@@ -11,6 +11,7 @@ import net.righthandedvoid.infidelity.intimacy.Privacy;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 import net.righthandedvoid.infidelity.pregnancy.Gestation;
 import net.righthandedvoid.infidelity.cycle.FertilityCycle;
+import net.righthandedvoid.infidelity.consent.VillagerOffers;
 import net.righthandedvoid.infidelity.pregnancy.PregnancyData;
 import net.righthandedvoid.infidelity.pregnancy.PregnancyManager;
 import net.minecraft.world.entity.LivingEntity;
@@ -35,6 +36,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
  *   /intimacydebug wantschildren <villager> [wants|doesnt|reroll]  -> shows or sets the lasting preference
  *   /intimacydebug privacy <villager> [home|private|anywhere|reroll]  -> shows/sets place preference and checks it here
  *   /intimacydebug cycle <target> [day <n>]  -> shows the cycle and conception chance, or sets today's cycle day
+ *   /intimacydebug offer <villager>          -> she walks over and makes an offer now (skips chance and cooldown)
  *   /intimacydebug conceive <target>        -> conception between you and target, ignoring chance (other gates apply)
  *   /intimacydebug pregnancy <target> [due|clear]  -> shows pregnancy state, skips to birth, or clears it
  *
@@ -88,6 +90,9 @@ public final class IntimacyDebugCommand {
                         .then(Commands.argument("day", IntegerArgumentType.integer(1, 60))
                             .executes(ctx -> cycle(ctx.getSource(), EntityArgument.getEntity(ctx, "target"),
                                 IntegerArgumentType.getInteger(ctx, "day")))))))
+            .then(Commands.literal("offer")
+                .then(Commands.argument("target", EntityArgument.entity())
+                    .executes(ctx -> forceOffer(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
             .then(Commands.literal("conceive")
                 .then(Commands.argument("target", EntityArgument.entity())
                     .executes(ctx -> conceive(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
@@ -183,6 +188,20 @@ public final class IntimacyDebugCommand {
             + " | " + FertilityCycle.phase(living)
             + " | ovulation day " + FertilityCycle.ovulationDay(length) + " +/- " + FertilityCycle.fertileWindow(length)
             + " | conception chance " + Math.round(FertilityCycle.conceptionChance(living) * 1000) / 10.0 + "%");
+        return 1;
+    }
+
+    private static int forceOffer(CommandSourceStack source, Entity target) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!(target instanceof VillagerEntityMCA villager)) {
+            reply(source, "Target must be an MCA villager.");
+            return 0;
+        }
+        // Report the gates up front so it's clear why nothing happens.
+        reply(source, "Eligible (ignoring distance): " + IntimacyRules.check(player, villager, true)
+            + " | place: " + Privacy.check(villager, player)
+            + " | move state: " + villager.getVillagerBrain().getMoveState());
+        reply(source, VillagerOffers.forceApproach(player, villager) ? "She's on her way." : "She's already walking somewhere.");
         return 1;
     }
 

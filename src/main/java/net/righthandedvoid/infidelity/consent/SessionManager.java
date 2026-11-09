@@ -56,12 +56,18 @@ public final class SessionManager {
     static void start(ConsentRequest req, MinecraftServer server) {
         if (isInSession(req.initiator) || isInSession(req.target)) return;
 
-        ServerPlayer initiator = server.getPlayerList().getPlayer(req.initiator);
+        // Sessions always have a player as "initiator". For a villager's offer, swap the roles here
+        // and remember who actually asked.
+        UUID playerId = req.initiatorIsVillager ? req.target : req.initiator;
+        UUID partnerId = req.initiatorIsVillager ? req.initiator : req.target;
+        boolean partnerIsVillager = req.initiatorIsVillager || req.targetIsVillager;
+
+        ServerPlayer initiator = server.getPlayerList().getPlayer(playerId);
         if (initiator == null) return;
 
         RelationshipContext context = null;
-        if (req.targetIsVillager) {
-            Entity entity = resolve(server, req.dimension, req.target);
+        if (partnerIsVillager) {
+            Entity entity = resolve(server, req.dimension, partnerId);
             if (!(entity instanceof VillagerEntityMCA villager)) return;
             context = RelationshipContext.of(villager, initiator);
         }
@@ -69,13 +75,14 @@ public final class SessionManager {
         // Like protection, but the other way round: a scene plays only if every player involved wants it.
         // Villagers have no preference, so it's down to the player(s). Nobody is told who skipped.
         boolean showScene = OptIn.wantsScenes(initiator)
-            && (req.targetIsVillager || OptIn.wantsScenes(server.getPlayerList().getPlayer(req.target)));
+            && (partnerIsVillager || OptIn.wantsScenes(server.getPlayerList().getPlayer(partnerId)));
         int duration = InfidelityConfig.ticks(showScene
             ? InfidelityConfig.SESSION_DURATION_SECONDS
             : InfidelityConfig.SKIPPED_SESSION_SECONDS);
 
-        IntimacySession session = new IntimacySession(req.initiator, req.target, req.targetIsVillager,
-            req.dimension, server.getTickCount(), duration, context, req.protectionUsed(), showScene);
+        IntimacySession session = new IntimacySession(playerId, partnerId, partnerIsVillager,
+            req.dimension, server.getTickCount(), duration, context, req.protectionUsed(), showScene,
+            req.initiatorIsVillager);
         BY_ID.put(session.id, session);
         BY_PARTICIPANT.put(session.initiator, session.id);
         BY_PARTICIPANT.put(session.partner, session.id);

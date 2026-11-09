@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
+import net.righthandedvoid.infidelity.InfidelityConfig;
 import net.righthandedvoid.infidelity.MCARInfidelity;
 
 import java.util.function.Supplier;
@@ -38,7 +39,22 @@ public final class OptIn {
                     .copyOnDeath()
                     .build());
 
+    /** Whether villagers may make offers to this player. On by default once opted in; it's still only an offer. */
+    public static final Supplier<AttachmentType<Boolean>> ALLOW_OFFERS = ATTACHMENT_TYPES.register("allow_offers",
+            () -> AttachmentType.builder(() -> true)
+                    .serialize(Codec.BOOL)
+                    .copyOnDeath()
+                    .build());
+
     private OptIn() {}
+
+    public static boolean allowsOffers(ServerPlayer player) {
+        return isOptedIn(player) && player.getData(ALLOW_OFFERS) && InfidelityConfig.VILLAGER_OFFERS.get();
+    }
+
+    public static void setAllowsOffers(ServerPlayer player, boolean allow) {
+        player.setData(ALLOW_OFFERS, allow);
+    }
 
     public static boolean wantsScenes(ServerPlayer player) {
         return player != null && player.getData(SHOW_SCENES);

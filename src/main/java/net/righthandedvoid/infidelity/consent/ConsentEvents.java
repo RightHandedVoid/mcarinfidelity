@@ -18,6 +18,7 @@ public final class ConsentEvents {
     public static void onServerTick(ServerTickEvent.Post event) {
         ConsentManager.tick(event.getServer());
         SessionManager.tick(event.getServer());
+        VillagerOffers.tick(event.getServer());
     }
 
     @SubscribeEvent
@@ -25,6 +26,7 @@ public final class ConsentEvents {
         if (event.getEntity() instanceof ServerPlayer player) {
             ConsentManager.onLogout(player);
             SessionManager.onLogout(player);
+            VillagerOffers.onLogout(player);
         }
     }
 
@@ -32,5 +34,6 @@ public final class ConsentEvents {
     public static void onServerStopping(ServerStoppingEvent event) {
         ConsentManager.clear();
         SessionManager.clear();
+        VillagerOffers.clear();
     }
 }

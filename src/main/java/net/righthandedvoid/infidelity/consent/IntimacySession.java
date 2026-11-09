@@ -10,7 +10,7 @@ import java.util.UUID;
 public final class IntimacySession {
 
     public final UUID id = UUID.randomUUID();
-    public final UUID initiator;          // always a player for now
+    public final UUID initiator;          // always a player (for villager offers: the player who accepted)
     public final UUID partner;            // player or villager
     public final boolean partnerIsVillager;
     public final ResourceKey<Level> dimension;
@@ -22,12 +22,14 @@ public final class IntimacySession {
     public final boolean protectionUsed;
     /** Decided at the start: true only if every player involved has scenes on. Otherwise it's skipped. */
     public final boolean showScene;
+    /** The villager made the offer. Matters later for who initiated an affair. */
+    public final boolean villagerInitiated;
 
     boolean ended;
 
     IntimacySession(UUID initiator, UUID partner, boolean partnerIsVillager, ResourceKey<Level> dimension,
                     long startTick, int durationTicks, RelationshipContext context, boolean protectionUsed,
-                    boolean showScene) {
+                    boolean showScene, boolean villagerInitiated) {
         this.initiator = initiator;
         this.partner = partner;
         this.partnerIsVillager = partnerIsVillager;
@@ -37,6 +39,7 @@ public final class IntimacySession {
         this.context = context;
         this.protectionUsed = protectionUsed;
         this.showScene = showScene;
+        this.villagerInitiated = villagerInitiated;
     }
 
     public boolean involves(UUID uuid) {

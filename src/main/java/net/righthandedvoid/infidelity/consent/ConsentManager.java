@@ -14,6 +14,7 @@ import net.righthandedvoid.infidelity.intimacy.IntimacyNetwork;
 import net.righthandedvoid.infidelity.intimacy.IntimacyRules;
 import net.righthandedvoid.infidelity.intimacy.Privacy;
 import net.righthandedvoid.infidelity.cycle.FertilityCycle;
+import net.righthandedvoid.infidelity.optin.OptIn;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 
 import java.util.ArrayList;
@@ -94,6 +95,44 @@ public final class ConsentManager {
         return result(Outcome.SENT);
     }
 
+    /**
+     * A villager offers to a player. The player gets the same prompt as a player-to-player request and can
+     * accept, accept only with protection, or decline. Declining costs nothing with her.
+     * Called by VillagerOffers (spontaneous offers, the journal, arriving home after leading the way).
+     */
+    public static RequestResult offerFromVillager(VillagerEntityMCA villager, ServerPlayer player, boolean protection) {
+        MinecraftServer server = player.server;
+        long now = server.getTickCount();
+
+        if (!OptIn.allowsOffers(player)) return result(Outcome.INVALID_TARGET);
+        if (SessionManager.isInSession(player.getUUID()) || SessionManager.isInSession(villager.getUUID())) {
+            return result(Outcome.IN_SESSION);
+        }
+
+        EligibilityResult eligibility = IntimacyRules.check(player, villager);
+        if (!eligibility.allowed()) return new RequestResult(Outcome.NOT_ELIGIBLE, eligibility);
+
+        Long cooldownUntil = COOLDOWNS.get(new PairKey(villager.getUUID(), player.getUUID()));
+        if (cooldownUntil != null && cooldownUntil > now) return result(Outcome.ON_COOLDOWN);
+        if (hasPending(villager.getUUID())) return result(Outcome.ALREADY_REQUESTING);
+        if (hasPending(player.getUUID())) return result(Outcome.TARGET_BUSY);
+
+        ConsentRequest req = new ConsentRequest(villager.getUUID(), player.getUUID(), false, true,
+            villager.getName().getString(), villager.level().dimension(), now, protection);
+        BY_ID.put(req.id, req);
+        PENDING_BY_TARGET.put(req.target, req.id);
+        PENDING_BY_INITIATOR.put(req.initiator, req.id);
+
+        PacketDistributor.sendToPlayer(player,
+            new IntimacyNetwork.ConsentPromptPayload(req.id, req.initiatorName, protection));
+        return result(Outcome.SENT);
+    }
+
+    /** Whether this player or villager is on either end of a pending request. */
+    public static boolean hasPending(UUID uuid) {
+        return PENDING_BY_INITIATOR.containsKey(uuid) || PENDING_BY_TARGET.containsKey(uuid);
+    }
+
     /** A player answers a specific request. Ignored unless that request is pending and addressed to them. */
     public static boolean respond(ServerPlayer responder, UUID requestId, ConsentResponse response) {
         UUID pendingId = PENDING_BY_TARGET.get(responder.getUUID());
@@ -110,8 +149,14 @@ public final class ConsentManager {
         req.protectionUsed = req.protectionRequested || response == ConsentResponse.ACCEPT_WITH_PROTECTION;
 
         // Re-check at the moment of acceptance.
-        ServerPlayer initiator = responder.server.getPlayerList().getPlayer(req.initiator);
-        if (initiator == null || !IntimacyRules.check(initiator, responder).allowed()) {
+        boolean stillOk;
+        if (req.initiatorIsVillager) {
+            stillOk = villagerOfferStillOk(req, responder, responder.server);
+        } else {
+            ServerPlayer initiator = responder.server.getPlayerList().getPlayer(req.initiator);
+            stillOk = initiator != null && IntimacyRules.check(initiator, responder).allowed();
+        }
+        if (!stillOk) {
             finish(req, ConsentRequest.Status.INVALIDATED, responder.server);
         } else {
             finish(req, ConsentRequest.Status.ACCEPTED, responder.server);
@@ -191,9 +236,19 @@ public final class ConsentManager {
     // =====================================================================
 
     private static boolean stillEligible(ConsentRequest req, MinecraftServer server) {
-        ServerPlayer initiator = server.getPlayerList().getPlayer(req.initiator);
         ServerPlayer target = server.getPlayerList().getPlayer(req.target);
+        if (req.initiatorIsVillager) return target != null && villagerOfferStillOk(req, target, server);
+        ServerPlayer initiator = server.getPlayerList().getPlayer(req.initiator);
         return initiator != null && target != null && IntimacyRules.check(initiator, target).allowed();
+    }
+
+    /** A villager's offer stands while she's eligible and still comfortable with where you are. */
+    private static boolean villagerOfferStillOk(ConsentRequest req, ServerPlayer player, MinecraftServer server) {
+        ServerLevel level = server.getLevel(req.dimension);
+        Entity entity = level == null ? null : level.getEntity(req.initiator);
+        return entity instanceof VillagerEntityMCA villager
+            && IntimacyRules.check(player, villager).allowed()
+            && Privacy.check(villager, player) == Privacy.PlaceResult.OK;
     }
 
     private static void decideForVillager(ConsentRequest req, MinecraftServer server) {
@@ -213,19 +268,26 @@ public final class ConsentManager {
             return;
         }
 
-        // Her place preference comes before the yes/no: "not here" isn't a "no", so no cooldown.
-        Privacy.PlaceResult place = Privacy.check(villager, initiator);
-        if (place != Privacy.PlaceResult.OK) {
-            gray(initiator, notHereText(villager, place));
-            finish(req, ConsentRequest.Status.NOT_HERE, server);
-            return;
-        }
-
         // Eligible villagers still don't always say yes. More hearts = more likely.
         // TODO: factor in personality, interaction fatigue, time of day, etc.
         int hearts = villager.getVillagerBrain().getMemoriesForPlayer(initiator).getHearts();
         // A little more willing around ovulation, a little less while menstruating.
         double chance = Math.min(0.95, 0.5 + hearts / 200.0 + FertilityCycle.willingnessModifier(villager));
+
+        // Her place preference: "not here" isn't a "no", so no cooldown.
+        Privacy.PlaceResult place = Privacy.check(villager, initiator);
+        if (place != Privacy.PlaceResult.OK) {
+            // If home would do and she'd say yes, she offers to lead the way and asks again once you're both there.
+            boolean homeWouldDo = place == Privacy.PlaceResult.WANTS_HOME || place == Privacy.PlaceResult.WANTS_INDOORS;
+            if (homeWouldDo && VillagerOffers.canLeadHome(villager) && villager.getRandom().nextDouble() < chance) {
+                VillagerOffers.startEscort(villager, initiator, req.protectionRequested);
+            } else {
+                gray(initiator, notHereText(villager, place));
+            }
+            finish(req, ConsentRequest.Status.NOT_HERE, server);
+            return;
+        }
+
         if (villager.getRandom().nextDouble() < chance) {
             // Her own view on protection, based on her lasting "wants children" preference.
             req.protectionUsed = req.protectionRequested || VillagerPreferences.wantsProtection(villager, initiator);
@@ -266,6 +328,21 @@ public final class ConsentManager {
 
     private static void notifyPlayers(ConsentRequest req, ConsentRequest.Status status,
                                       MinecraftServer server, ServerPlayer targetPlayer) {
+        if (req.initiatorIsVillager) {
+            if (targetPlayer == null) return;
+            String name = req.initiatorName;
+            String text = switch (status) {
+                case ACCEPTED -> "You accepted " + name + "'s offer (" + protectionLabel(req.protectionUsed) + ").";
+                case DECLINED, NOT_HERE -> "You declined " + name + "'s offer.";
+                case TIMED_OUT -> name + "'s offer passed.";
+                case CANCELLED -> name + "'s offer was withdrawn.";
+                case INVALIDATED -> name + "'s offer is off.";
+                case PENDING -> null;
+            };
+            if (text != null) gray(targetPlayer, text);
+            return;
+        }
+
         ServerPlayer initiator = server.getPlayerList().getPlayer(req.initiator);
         String initiatorName = initiator != null ? initiator.getName().getString() : "They";
 

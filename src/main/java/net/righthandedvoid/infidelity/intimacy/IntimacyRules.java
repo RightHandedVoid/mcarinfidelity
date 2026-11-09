@@ -27,6 +27,9 @@ public final class IntimacyRules {
 
     // Tunables live in InfidelityConfig (editable in-game). The hard rules below are not configurable.
 
+    /** Slightly inside the eligibility distance, so an offer made on arrival doesn't fail on the boundary. */
+    public static final double MAX_DISTANCE_FOR_OFFERS = 3.0;
+
     private IntimacyRules() {}
 
     // =====================================================================
@@ -34,6 +37,14 @@ public final class IntimacyRules {
     // =====================================================================
 
     public static EligibilityResult check(ServerPlayer player, VillagerEntityMCA villager) {
+        return check(player, villager, false);
+    }
+
+    /**
+     * ignoreDistance: everything except "close enough" (still same dimension). Used to decide whether a
+     * villager would be willing before she walks over or leads the way. The real request re-checks in full.
+     */
+    public static EligibilityResult check(ServerPlayer player, VillagerEntityMCA villager, boolean ignoreDistance) {
         try {
             // 1. Age. Always first, never skippable.
             if (!isAdultVillager(villager)) return EligibilityResult.NOT_ADULT;
@@ -51,7 +62,9 @@ public final class IntimacyRules {
             }
 
             // 4. Proximity.
-            if (!closeEnough(player, villager)) return EligibilityResult.TOO_FAR;
+            if (ignoreDistance ? player.level() != villager.level() : !closeEnough(player, villager)) {
+                return EligibilityResult.TOO_FAR;
+            }
 
             // 5. Busy states.
             VillagerBrain<?> brain = villager.getVillagerBrain();

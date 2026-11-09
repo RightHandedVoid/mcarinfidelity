@@ -15,9 +15,13 @@ public final class ConsentRequest {
     public enum Status { PENDING, ACCEPTED, DECLINED, NOT_HERE, TIMED_OUT, CANCELLED, INVALIDATED }
 
     public final UUID id = UUID.randomUUID();
-    public final UUID initiator;          // always a player for now
-    public final UUID target;             // player or villager
+    public final UUID initiator;          // player, or a villager making an offer
+    public final UUID target;             // player or villager (always a player when initiatorIsVillager)
     public final boolean targetIsVillager;
+    /** A villager offering to a player. The player answers, exactly like a player-to-player request. */
+    public final boolean initiatorIsVillager;
+    /** For messages, since a villager initiator isn't in the player list. */
+    public final String initiatorName;
     public final ResourceKey<Level> dimension;
     public final long createdTick;
     /** What the initiator asked for. */
@@ -29,9 +33,16 @@ public final class ConsentRequest {
 
     ConsentRequest(UUID initiator, UUID target, boolean targetIsVillager,
                    ResourceKey<Level> dimension, long createdTick, boolean protectionRequested) {
+        this(initiator, target, targetIsVillager, false, "", dimension, createdTick, protectionRequested);
+    }
+
+    ConsentRequest(UUID initiator, UUID target, boolean targetIsVillager, boolean initiatorIsVillager,
+                   String initiatorName, ResourceKey<Level> dimension, long createdTick, boolean protectionRequested) {
         this.initiator = initiator;
         this.target = target;
         this.targetIsVillager = targetIsVillager;
+        this.initiatorIsVillager = initiatorIsVillager;
+        this.initiatorName = initiatorName;
         this.dimension = dimension;
         this.createdTick = createdTick;
         this.protectionRequested = protectionRequested;

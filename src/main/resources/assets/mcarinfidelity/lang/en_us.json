@@ -67,5 +67,21 @@
   "mcarinfidelity.configuration.cycleLengthDays": "Cycle Length (days)",
   "mcarinfidelity.configuration.cycleLengthDays.tooltip": "Length of a cycle in Minecraft days. Phases scale with it.",
   "mcarinfidelity.configuration.cycleShareHearts": "Hearts to Share Cycle",
-  "mcarinfidelity.configuration.cycleShareHearts.tooltip": "Hearts a villager needs before telling a non-partner about her cycle."
+  "mcarinfidelity.configuration.cycleShareHearts.tooltip": "Hearts a villager needs before telling a non-partner about her cycle.",
+  "mcarinfidelity.configuration.offers": "Villager Offers",
+  "mcarinfidelity.configuration.offers.tooltip": "Villagers making the first move. Players can always decline, or turn offers off.",
+  "mcarinfidelity.configuration.villagerOffers": "Allow Villager Offers",
+  "mcarinfidelity.configuration.villagerOffers.tooltip": "Allow villagers to make offers at all.",
+  "mcarinfidelity.configuration.offerCheckSeconds": "Offer Check Interval (s)",
+  "mcarinfidelity.configuration.offerCheckSeconds.tooltip": "How often each player gets a roll for a spontaneous offer.",
+  "mcarinfidelity.configuration.spontaneousOfferChance": "Spontaneous Offer Chance",
+  "mcarinfidelity.configuration.spontaneousOfferChance.tooltip": "Chance per roll when an eligible villager who likes you is nearby.",
+  "mcarinfidelity.configuration.offerSearchRadius": "Offer Search Radius",
+  "mcarinfidelity.configuration.offerSearchRadius.tooltip": "How far away a villager can be to walk over and make an offer.",
+  "mcarinfidelity.configuration.offerCooldownMinutes": "Villager Offer Cooldown (min)",
+  "mcarinfidelity.configuration.offerCooldownMinutes.tooltip": "Real-time minutes before the same villager offers again.",
+  "mcarinfidelity.configuration.journalOfferChance": "Offer After Journal Chance",
+  "mcarinfidelity.configuration.journalOfferChance.tooltip": "Chance a villager in her fertile window offers after sharing her cycle.",
+  "mcarinfidelity.configuration.escortTimeoutSeconds": "Lead Home Timeout (s)",
+  "mcarinfidelity.configuration.escortTimeoutSeconds.tooltip": "How long a villager leading you home waits before giving up."
 }

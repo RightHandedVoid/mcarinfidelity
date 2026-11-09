@@ -37,6 +37,15 @@ public final class InfidelityConfig {
     public static final ModConfigSpec.IntValue ONLOOKER_RADIUS;
     public static final ModConfigSpec.BooleanValue PRIVACY_INTERRUPTS_SESSIONS;
 
+    // Villager offers
+    public static final ModConfigSpec.BooleanValue VILLAGER_OFFERS;
+    public static final ModConfigSpec.IntValue OFFER_CHECK_SECONDS;
+    public static final ModConfigSpec.DoubleValue SPONTANEOUS_OFFER_CHANCE;
+    public static final ModConfigSpec.IntValue OFFER_SEARCH_RADIUS;
+    public static final ModConfigSpec.IntValue OFFER_COOLDOWN_MINUTES;
+    public static final ModConfigSpec.DoubleValue JOURNAL_OFFER_CHANCE;
+    public static final ModConfigSpec.IntValue ESCORT_TIMEOUT_SECONDS;
+
     // Pregnancy
     public static final ModConfigSpec.DoubleValue PEAK_CONCEPTION_CHANCE;
     public static final ModConfigSpec.DoubleValue BASE_CONCEPTION_CHANCE;
@@ -146,6 +155,49 @@ public final class InfidelityConfig {
             .comment("Villagers who care about privacy stop if someone comes into view during a session.")
             .translation(KEY + "privacyInterruptsSessions")
             .define("privacyInterruptsSessions", true);
+
+        b.pop();
+
+        b.comment("Villagers making the first move. Players always get the normal prompt and can decline at no cost,",
+                "and each player can turn offers off with /intimacy offers off.")
+            .translation(KEY + "offers")
+            .push("offers");
+
+        VILLAGER_OFFERS = b
+            .comment("Allow villagers to make offers at all.")
+            .translation(KEY + "villagerOffers")
+            .define("villagerOffers", true);
+
+        OFFER_CHECK_SECONDS = b
+            .comment("How often each player gets a roll for a spontaneous offer from a villager nearby.")
+            .translation(KEY + "offerCheckSeconds")
+            .defineInRange("offerCheckSeconds", 60, 10, 1200);
+
+        SPONTANEOUS_OFFER_CHANCE = b
+            .comment("Chance per roll, when an eligible villager who likes you is nearby and comfortable where she is.",
+                "A bit higher around her ovulation.")
+            .translation(KEY + "spontaneousOfferChance")
+            .defineInRange("spontaneousOfferChance", 0.08, 0.0, 1.0);
+
+        OFFER_SEARCH_RADIUS = b
+            .comment("How far away (in blocks) a villager can be to walk over and make an offer.")
+            .translation(KEY + "offerSearchRadius")
+            .defineInRange("offerSearchRadius", 16, 4, 48);
+
+        OFFER_COOLDOWN_MINUTES = b
+            .comment("Real-time minutes before the same villager makes another spontaneous or journal offer.")
+            .translation(KEY + "offerCooldownMinutes")
+            .defineInRange("offerCooldownMinutes", 20, 1, 240);
+
+        JOURNAL_OFFER_CHANCE = b
+            .comment("Chance a villager in her fertile window offers after telling you about her cycle.")
+            .translation(KEY + "journalOfferChance")
+            .defineInRange("journalOfferChance", 0.35, 0.0, 1.0);
+
+        ESCORT_TIMEOUT_SECONDS = b
+            .comment("How long a villager leading you home waits for you before giving up.")
+            .translation(KEY + "escortTimeoutSeconds")
+            .defineInRange("escortTimeoutSeconds", 180, 30, 900);
 
         b.pop();
 

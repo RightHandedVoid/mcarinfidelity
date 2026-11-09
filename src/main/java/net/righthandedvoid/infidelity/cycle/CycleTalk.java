@@ -5,6 +5,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.righthandedvoid.infidelity.InfidelityConfig;
+import net.righthandedvoid.infidelity.consent.VillagerOffers;
 import net.righthandedvoid.infidelity.intimacy.IntimacyRules;
 import net.righthandedvoid.infidelity.intimacy.Privacy;
 import net.righthandedvoid.infidelity.optin.OptIn;
@@ -56,7 +57,8 @@ public final class CycleTalk {
                 : name + " lowers " + her + " voice: " + her + " cycle is late.";
             default -> name + " tells you: " + describe(villager) + ".";
         });
-        // TODO (step 5): around ovulation, a willing villager might offer intimacy here.
+        // Around ovulation, a willing villager might take it from here.
+        VillagerOffers.afterJournal(player, villager);
         return true;
     }
 
