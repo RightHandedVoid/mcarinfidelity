@@ -20,6 +20,7 @@ import net.minecraft.world.item.ItemStack;
 import net.righthandedvoid.infidelity.InfidelityConfig;
 import net.righthandedvoid.infidelity.MCARInfidelity;
 import net.righthandedvoid.infidelity.cycle.FertilityCycle;
+import net.righthandedvoid.infidelity.affair.AffairManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -178,6 +179,7 @@ public final class PregnancyManager {
 
     private static void giveBirth(LivingEntity mother, Gestation g) {
         startRecovery(mother);
+        if (mother.getServer() != null) AffairManager.onBirth(mother.getUUID(), g.father, mother.getServer());
 
         if (mother instanceof ServerPlayer player) {
             deliver(player, g.babies);

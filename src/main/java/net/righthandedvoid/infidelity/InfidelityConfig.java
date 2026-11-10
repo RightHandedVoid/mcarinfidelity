@@ -49,6 +49,20 @@ public final class InfidelityConfig {
     public static final ModConfigSpec.DoubleValue BREAKUP_THRESHOLD;
     public static final ModConfigSpec.DoubleValue GRIEVANCE_DECAY_PER_DAY;
     public static final ModConfigSpec.DoubleValue REFUSE_INTIMACY_GRIEVANCE;
+    public static final ModConfigSpec.DoubleValue EVIDENCE_MULTIPLIER;
+
+    // Discovery
+    public static final ModConfigSpec.IntValue GOSSIP_DELAY_MINUTES;
+    public static final ModConfigSpec.DoubleValue GOSSIP_CHANCE_PER_MINUTE;
+    public static final ModConfigSpec.IntValue GOSSIP_RADIUS;
+    public static final ModConfigSpec.DoubleValue CHANCE_DISCOVERY_PER_DAY;
+    public static final ModConfigSpec.IntValue CHANCE_WINDOW_DAYS;
+
+    // Exile
+    public static final ModConfigSpec.DoubleValue EXILE_THRESHOLD;
+    public static final ModConfigSpec.IntValue EXILE_MIN_PARTNERS;
+    public static final ModConfigSpec.BooleanValue EXILE_GUARDS_HOSTILE;
+    public static final ModConfigSpec.IntValue EXILE_WARN_SECONDS;
 
     // Villager offers
     public static final ModConfigSpec.BooleanValue VILLAGER_OFFERS;
@@ -232,6 +246,70 @@ public final class InfidelityConfig {
             .comment("At or above this grievance, a villager won't be intimate with that person (or make offers to them).")
             .translation(KEY + "refuseIntimacyGrievance")
             .defineInRange("refuseIntimacyGrievance", 1.0, 0.0, 50.0);
+
+        EVIDENCE_MULTIPLIER = b
+            .comment("Multiplier when it came out through a child.")
+            .translation(KEY + "evidenceMultiplier")
+            .defineInRange("evidenceMultiplier", 1.25, 0.0, 5.0);
+
+        b.pop();
+
+        b.comment("How affairs come out besides being seen: gossip from villagers who saw it, a child, or plain chance.")
+            .translation(KEY + "discovery")
+            .push("discovery");
+
+        GOSSIP_DELAY_MINUTES = b
+            .comment("Real-time minutes before witnesses start talking.")
+            .translation(KEY + "gossipDelayMinutes")
+            .defineInRange("gossipDelayMinutes", 5, 0, 240);
+
+        GOSSIP_CHANCE_PER_MINUTE = b
+            .comment("Chance per minute that a witness who's near the wronged partner tells them.")
+            .translation(KEY + "gossipChancePerMinute")
+            .defineInRange("gossipChancePerMinute", 0.3, 0.0, 1.0);
+
+        GOSSIP_RADIUS = b
+            .comment("How close (blocks) a witness has to be to the wronged partner to tell them.")
+            .translation(KEY + "gossipRadius")
+            .defineInRange("gossipRadius", 8, 2, 48);
+
+        CHANCE_DISCOVERY_PER_DAY = b
+            .comment("Chance per Minecraft day that an undiscovered affair comes out anyway.")
+            .translation(KEY + "chanceDiscoveryPerDay")
+            .defineInRange("chanceDiscoveryPerDay", 0.03, 0.0, 1.0);
+
+        CHANCE_WINDOW_DAYS = b
+            .comment("Minecraft days after which an undiscovered affair can no longer come out by chance (gossip and children still can).")
+            .translation(KEY + "chanceWindowDays")
+            .defineInRange("chanceWindowDays", 30, 1, 365);
+
+        b.pop();
+
+        b.comment("Exile from a village: permanent. Can't talk to, trade with, marry or be intimate with its villagers,",
+                "its guards turn hostile, and you're told to leave inside its borders. Ops can pardon with /intimacydebug pardon.")
+            .translation(KEY + "exile")
+            .push("exile");
+
+        EXILE_THRESHOLD = b
+            .comment("Total severity of a player's discovered offenses in one village that gets them exiled",
+                "(as the person someone cheated with, the 'other party share' of it counts).")
+            .translation(KEY + "exileThreshold")
+            .defineInRange("exileThreshold", 12.0, 1.0, 200.0);
+
+        EXILE_MIN_PARTNERS = b
+            .comment("...and those offenses must involve at least this many different people.")
+            .translation(KEY + "exileMinPartners")
+            .defineInRange("exileMinPartners", 2, 1, 20);
+
+        EXILE_GUARDS_HOSTILE = b
+            .comment("Guards of the village attack exiled players inside its borders.")
+            .translation(KEY + "exileGuardsHostile")
+            .define("exileGuardsHostile", true);
+
+        EXILE_WARN_SECONDS = b
+            .comment("How often exiled players inside the village are told to leave.")
+            .translation(KEY + "exileWarnSeconds")
+            .defineInRange("exileWarnSeconds", 30, 5, 600);
 
         b.pop();
 

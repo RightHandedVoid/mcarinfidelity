@@ -20,6 +20,7 @@ import net.righthandedvoid.infidelity.intimacy.Privacy;
 import net.righthandedvoid.infidelity.optin.OptIn;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 import net.righthandedvoid.infidelity.affair.Grievances;
+import net.righthandedvoid.infidelity.affair.Exile;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -80,6 +81,7 @@ public final class VillagerOffers {
         if (!OptIn.allowsOffers(player) || onCooldown(villager, player.server)) return;
         if (!FertilityCycle.phase(villager).fertile()) return;
         if (Grievances.refusesIntimacy(villager, player.getUUID())) return;
+        if (Exile.isExiledFrom(player.server, player.getUUID(), villager)) return;
         if (villager.getRandom().nextDouble() >= InfidelityConfig.JOURNAL_OFFER_CHANCE.get()) return;
         if (!IntimacyRules.check(player, villager).allowed()) return;
 
@@ -162,6 +164,7 @@ public final class VillagerOffers {
                     && !SessionManager.isInSession(v.getUUID())
                     && !ConsentManager.hasPending(v.getUUID())
                     && !Grievances.refusesIntimacy(v, player.getUUID())
+                    && !Exile.isExiledFrom(player.server, player.getUUID(), v)
                     && IntimacyRules.check(player, v, true) == EligibilityResult.OK
                     && Privacy.check(v, player) == Privacy.PlaceResult.OK)
             .stream()

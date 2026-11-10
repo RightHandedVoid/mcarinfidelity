@@ -14,7 +14,8 @@ import net.righthandedvoid.infidelity.MCARInfidelity;
 @Mod(value = MCARInfidelity.MODID, dist = Dist.CLIENT)
 public class MCARInfidelityClient {
     public MCARInfidelityClient(ModContainer container) {
-        // Adds the "Config" button for this mod in the Mods list, using NeoForge's built-in config screen.
-        container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
+        // Adds the "Config" button for this mod in the Mods list: NeoForge's built-in screen plus a reset-all button.
+        container.registerExtensionPoint(IConfigScreenFactory.class,
+            (mod, parent) -> new ConfigurationScreen(mod, parent, InfidelityConfigScreen.TopSection::new));
     }
 }

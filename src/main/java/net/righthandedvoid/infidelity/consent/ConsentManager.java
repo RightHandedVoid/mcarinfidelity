@@ -16,6 +16,7 @@ import net.righthandedvoid.infidelity.intimacy.Privacy;
 import net.righthandedvoid.infidelity.cycle.FertilityCycle;
 import net.righthandedvoid.infidelity.optin.OptIn;
 import net.righthandedvoid.infidelity.affair.Grievances;
+import net.righthandedvoid.infidelity.affair.Exile;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 
 import java.util.ArrayList;
@@ -265,6 +266,12 @@ public final class ConsentManager {
         EligibilityResult eligibility = IntimacyRules.check(initiator, villager);
         if (!eligibility.allowed()) {
             initiator.sendSystemMessage(villagerDeclineMessage(villager, eligibility));
+            finish(req, ConsentRequest.Status.DECLINED, server);
+            return;
+        }
+
+        if (Exile.isExiledFrom(server, initiator.getUUID(), villager)) {
+            gray(initiator, villager.getName().getString() + " won't have anything to do with you.");
             finish(req, ConsentRequest.Status.DECLINED, server);
             return;
         }

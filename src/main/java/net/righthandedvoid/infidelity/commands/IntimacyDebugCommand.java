@@ -15,6 +15,8 @@ import net.righthandedvoid.infidelity.consent.VillagerOffers;
 import net.righthandedvoid.infidelity.affair.AffairLedger;
 import net.righthandedvoid.infidelity.affair.Grievances;
 import net.righthandedvoid.infidelity.affair.Incident;
+import net.righthandedvoid.infidelity.affair.AffairManager;
+import net.righthandedvoid.infidelity.affair.Exile;
 import net.righthandedvoid.infidelity.pregnancy.PregnancyData;
 import net.righthandedvoid.infidelity.pregnancy.PregnancyManager;
 import net.minecraft.world.entity.LivingEntity;
@@ -42,6 +44,9 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
  *   /intimacydebug offer <villager>          -> she walks over and makes an offer now (skips chance and cooldown)
  *   /intimacydebug affairs <villager>        -> her grievances and the incidents involving her
  *   /intimacydebug forgive <villager>        -> clears her grievances (offense history included)
+ *   /intimacydebug discover <villager>       -> reveals every undiscovered incident where she's the wronged one (as gossip)
+ *   /intimacydebug exile <player>            -> lists villages that exiled the player
+ *   /intimacydebug pardon <player>           -> lifts every exile on the player
  *   /intimacydebug conceive <target>        -> conception between you and target, ignoring chance (other gates apply)
  *   /intimacydebug pregnancy <target> [due|clear]  -> shows pregnancy state, skips to birth, or clears it
  *
@@ -104,6 +109,15 @@ public final class IntimacyDebugCommand {
             .then(Commands.literal("forgive")
                 .then(Commands.argument("target", EntityArgument.entity())
                     .executes(ctx -> forgive(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
+            .then(Commands.literal("discover")
+                .then(Commands.argument("target", EntityArgument.entity())
+                    .executes(ctx -> discoverAll(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
+            .then(Commands.literal("exile")
+                .then(Commands.argument("player", EntityArgument.player())
+                    .executes(ctx -> exileInfo(ctx.getSource(), EntityArgument.getPlayer(ctx, "player")))))
+            .then(Commands.literal("pardon")
+                .then(Commands.argument("player", EntityArgument.player())
+                    .executes(ctx -> pardon(ctx.getSource(), EntityArgument.getPlayer(ctx, "player")))))
             .then(Commands.literal("conceive")
                 .then(Commands.argument("target", EntityArgument.entity())
                     .executes(ctx -> conceive(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
@@ -239,7 +253,8 @@ public final class IntimacyDebugCommand {
         for (Incident i : AffairLedger.get(server).involving(villager.getUUID())) {
             reply(source, "  incident: " + name.apply(i.cheater) + " cheated on " + name.apply(i.wronged)
                 + " with " + name.apply(i.other) + " | " + i.tier + (i.cheaterInitiated ? ", initiated" : ", was asked")
-                + " | " + (i.discovered() ? "discovered: " + i.discoveredBy() : "undiscovered")
+                + " | " + (i.discovered() ? "discovered: " + i.discoveredBy() + ", severity " + Math.round(i.severity() * 100) / 100.0
+                    : i.pending() != Incident.Channel.NONE ? "pending: " + i.pending() : "undiscovered")
                 + " | witnesses: " + i.witnesses().size());
         }
         return 1;
@@ -253,6 +268,36 @@ public final class IntimacyDebugCommand {
         Grievances.clear(villager);
         reply(source, villager.getName().getString() + " has forgiven everyone.");
         return 1;
+    }
+
+    private static int discoverAll(CommandSourceStack source, Entity target) {
+        if (!(target instanceof VillagerEntityMCA villager)) {
+            reply(source, "Target must be an MCA villager.");
+            return 0;
+        }
+        int count = 0;
+        for (Incident i : new java.util.ArrayList<>(AffairLedger.get(source.getServer()).involving(villager.getUUID()))) {
+            if (i.wronged.equals(villager.getUUID()) && !i.discovered()) {
+                AffairManager.discover(i, Incident.Channel.GOSSIP, source.getServer());
+                count++;
+            }
+        }
+        reply(source, "Revealed " + count + " incident(s) to " + villager.getName().getString() + ".");
+        return count;
+    }
+
+    private static int exileInfo(CommandSourceStack source, ServerPlayer player) {
+        var villages = Exile.get(source.getServer()).villagesExiling(player.getUUID());
+        reply(source, villages.isEmpty() ? player.getName().getString() + " isn't exiled anywhere."
+            : player.getName().getString() + " is exiled from: " + String.join(", ",
+                villages.stream().map(id -> Exile.villageName(source.getServer(), id) + " (#" + id + ")").toList()));
+        return villages.size();
+    }
+
+    private static int pardon(CommandSourceStack source, ServerPlayer player) {
+        boolean any = Exile.get(source.getServer()).pardon(player.getUUID(), null);
+        reply(source, any ? "Pardoned " + player.getName().getString() + "." : "Nothing to pardon.");
+        return any ? 1 : 0;
     }
 
     private static int conceive(CommandSourceStack source, Entity target) throws CommandSyntaxException {

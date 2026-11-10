@@ -33,6 +33,13 @@ import java.util.UUID;
  * is a villager. A player partner is left out on purpose: the mod doesn't report one player's private
  * activity to another; a child's family tree can still reveal it.
  *
+ * Discovery channels:
+ *   WITNESSED - the wronged partner sees it during the session (immediate).
+ *   GOSSIP    - a villager who saw it tells the wronged partner when they're near each other.
+ *   EVIDENCE  - an unprotected affair leads to a child; the birth gives it away.
+ *   CHANCE    - a small daily probability that it comes out anyway, for a limited time.
+ * Gossip/evidence/chance need the wronged villager loaded; until she is, the discovery waits (pending).
+ *
  * Severity of one discovered incident = tier x who initiated x how it was found x repetition.
  * The wronged villager's grievance toward the cheater grows by that much, and toward the person they
  * cheated with by a share of it. Grievance costs hearts, blocks intimacy until it fades, and past a
@@ -128,19 +135,91 @@ public final class AffairManager {
     }
 
     // =====================================================================
+    // Gossip, evidence, chance (ticked once a second from AffairEvents)
+    // =====================================================================
+
+    static void tick(MinecraftServer server) {
+        AffairLedger ledger = AffairLedger.get(server);
+        long now = server.overworld().getGameTime();
+
+        double gossipPerCheck = InfidelityConfig.GOSSIP_CHANCE_PER_MINUTE.get() / 60.0;
+        double chancePerCheck = InfidelityConfig.CHANCE_DISCOVERY_PER_DAY.get() / 1200.0;   // 1200 one-second checks per day
+        long gossipDelay = InfidelityConfig.GOSSIP_DELAY_MINUTES.get() * 60L * 20L;
+        long chanceWindow = InfidelityConfig.CHANCE_WINDOW_DAYS.get() * 24000L;
+        double gossipRadius = InfidelityConfig.GOSSIP_RADIUS.get();
+
+        for (Incident incident : new ArrayList<>(ledger.all())) {
+            if (incident.discovered()) continue;
+            if (SESSION_INCIDENTS.values().stream().anyMatch(l -> l.contains(incident.id))) continue;   // still happening
+
+            long age = now - incident.gameTime;
+
+            // Chance: only while it's recent; marks it found out even if she isn't around right now.
+            if (incident.pending == Incident.Channel.NONE && age < chanceWindow
+                && server.overworld().getRandom().nextDouble() < chancePerCheck) {
+                incident.pending = Incident.Channel.CHANCE;
+                ledger.setDirty();
+            }
+
+            Entity wrongedEntity = findEntity(server, incident.wronged);
+            if (!(wrongedEntity instanceof VillagerEntityMCA wronged)) continue;
+
+            if (incident.pending != Incident.Channel.NONE) {
+                discover(incident, incident.pending, server);
+                continue;
+            }
+
+            // Gossip: a witness near her, after a delay, sometimes tells her.
+            if (age < gossipDelay || incident.witnesses.isEmpty()) continue;
+            for (UUID witnessId : incident.witnesses) {
+                if (!(findEntity(server, witnessId) instanceof VillagerEntityMCA witness)) continue;
+                if (!witness.isAlive() || witness.isSleeping() || wronged.isSleeping()) continue;
+                if (witness.level() != wronged.level() || witness.distanceTo(wronged) > gossipRadius) continue;
+                if (witness.getRandom().nextDouble() < gossipPerCheck) {
+                    discover(incident, Incident.Channel.GOSSIP, server);
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * A child was born. If its parents' time together was an undiscovered, unprotected affair, the birth
+     * gives it away to whoever was being cheated on.
+     */
+    public static void onBirth(UUID mother, UUID father, MinecraftServer server) {
+        AffairLedger ledger = AffairLedger.get(server);
+        for (Incident i : ledger.all()) {
+            if (i.discovered() || i.protectionUsed || i.pending != Incident.Channel.NONE) continue;
+            boolean parents = (i.cheater.equals(mother) && i.other.equals(father))
+                || (i.cheater.equals(father) && i.other.equals(mother));
+            if (parents) {
+                i.pending = Incident.Channel.EVIDENCE;
+                ledger.setDirty();
+            }
+        }
+    }
+
+    // =====================================================================
     // Discovery and consequences
     // =====================================================================
 
-    /** Reveal an incident to the wronged villager and apply the consequences. Needs her loaded. */
+    /** Reveal an incident to the wronged villager and apply the consequences. Waits (pending) if she isn't loaded. */
     public static void discover(Incident incident, Incident.Channel channel, MinecraftServer server) {
         if (incident.discovered()) return;
-        incident.discoveredBy = channel;
-        AffairLedger.get(server).setDirty();
-
         Entity entity = findEntity(server, incident.wronged);
-        if (!(entity instanceof VillagerEntityMCA wronged)) return;   // recorded as discovered; nothing to act on
+        if (!(entity instanceof VillagerEntityMCA wronged)) {
+            incident.pending = channel;
+            AffairLedger.get(server).setDirty();
+            return;
+        }
+        incident.discoveredBy = channel;
+        incident.pending = Incident.Channel.NONE;
 
         double severity = severity(incident, channel, Grievances.offenses(wronged, incident.cheater));
+        incident.severity = severity;
+        incident.villageId = wronged.getResidency().getHomeVillage().map(v -> v.getId()).orElse(-1);
+        AffairLedger.get(server).setDirty();
         double otherShare = severity * InfidelityConfig.OTHER_PARTY_SHARE.get();
 
         double cheaterScore = Grievances.add(wronged, incident.cheater, severity, true);
@@ -163,16 +242,29 @@ public final class AffairManager {
         String wrongedName = wronged.getName().getString();
         String cheaterName = nameOf(server, incident.cheater);
         String otherName = nameOf(server, incident.other);
-        String how = channel == Incident.Channel.WITNESSED ? " saw " : " found out about ";
+        String how = switch (channel) {
+            case WITNESSED -> " saw ";
+            case GOSSIP -> " heard about ";
+            default -> " found out about ";
+        };
+        String why = switch (channel) {
+            case GOSSIP -> " Someone who saw it talked.";
+            case EVIDENCE -> " The baby gave it away.";
+            default -> "";
+        };
 
-        if (cheaterPlayer != null) red(cheaterPlayer, wrongedName + how + "you with " + otherName + ".");
+        if (cheaterPlayer != null) red(cheaterPlayer, wrongedName + how + "you and " + otherName + "." + why);
         if (otherPlayer != null) {
             red(otherPlayer, wrongedName + ", " + cheaterName + "'s " + partnerWord(wronged, incident.tier) + "," + how
-                + "the two of you" + (channel == Incident.Channel.WITNESSED ? " together." : "."));
+                + "the two of you." + why);
         }
 
         double threshold = InfidelityConfig.BREAKUP_THRESHOLD.get() * Grievances.forgiveness(wronged);
         if (cheaterScore >= threshold) breakUp(wronged, incident, server, cheaterPlayer, otherPlayer, cheaterName);
+
+        // Enough offenses with enough different people in her village, and you're out.
+        if (incident.cheaterIsPlayer) Exile.evaluate(server, incident.cheater, incident.villageId);
+        if (incident.otherIsPlayer) Exile.evaluate(server, incident.other, incident.villageId);
     }
 
     public static double severity(Incident incident, Incident.Channel channel, int priorOffenses) {
@@ -182,7 +274,11 @@ public final class AffairManager {
         double initiated = incident.cheaterInitiated
             ? InfidelityConfig.INITIATED_MULTIPLIER.get()
             : InfidelityConfig.WAS_ASKED_MULTIPLIER.get();
-        double found = channel == Incident.Channel.WITNESSED ? InfidelityConfig.WITNESSED_MULTIPLIER.get() : 1.0;
+        double found = switch (channel) {
+            case WITNESSED -> InfidelityConfig.WITNESSED_MULTIPLIER.get();
+            case EVIDENCE -> InfidelityConfig.EVIDENCE_MULTIPLIER.get();
+            default -> 1.0;
+        };
         double repeat = 1.0 + InfidelityConfig.REPEAT_STEP.get() * priorOffenses;
         return base * initiated * found * repeat;
     }

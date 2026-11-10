@@ -38,6 +38,11 @@ public final class Incident {
 
     final Set<UUID> witnesses;
     Channel discoveredBy;
+    /** Found out, but the wronged villager wasn't loaded yet: applied as soon as she is. */
+    Channel pending = Channel.NONE;
+    /** Filled in at discovery, for exile: severity applied, and the wronged villager's home village (-1 if none). */
+    double severity;
+    int villageId = -1;
 
     Incident(UUID id, long gameTime, UUID wronged, UUID cheater, boolean cheaterIsPlayer, UUID other,
              boolean otherIsPlayer, Tier tier, boolean cheaterInitiated, boolean protectionUsed,
@@ -59,6 +64,9 @@ public final class Incident {
     public boolean discovered() { return discoveredBy != Channel.NONE; }
     public Channel discoveredBy() { return discoveredBy; }
     public Set<UUID> witnesses() { return Set.copyOf(witnesses); }
+    public Channel pending() { return pending; }
+    public double severity() { return severity; }
+    public int villageId() { return villageId; }
 
     CompoundTag save() {
         CompoundTag tag = new CompoundTag();
@@ -76,16 +84,23 @@ public final class Incident {
         for (UUID w : witnesses) list.add(NbtUtils.createUUID(w));
         tag.put("witnesses", list);
         tag.putString("discoveredBy", discoveredBy.name());
+        tag.putString("pending", pending.name());
+        tag.putDouble("severity", severity);
+        tag.putInt("village", villageId);
         return tag;
     }
 
     static Incident load(CompoundTag tag) {
         Set<UUID> witnesses = new HashSet<>();
         for (Tag t : tag.getList("witnesses", Tag.TAG_INT_ARRAY)) witnesses.add(NbtUtils.loadUUID(t));
-        return new Incident(tag.getUUID("id"), tag.getLong("time"), tag.getUUID("wronged"), tag.getUUID("cheater"),
+        Incident i = new Incident(tag.getUUID("id"), tag.getLong("time"), tag.getUUID("wronged"), tag.getUUID("cheater"),
             tag.getBoolean("cheaterIsPlayer"), tag.getUUID("other"), tag.getBoolean("otherIsPlayer"),
             parse(Tier.class, tag.getString("tier"), Tier.COMMITTED), tag.getBoolean("cheaterInitiated"),
             tag.getBoolean("protection"), witnesses, parse(Channel.class, tag.getString("discoveredBy"), Channel.NONE));
+        i.pending = parse(Channel.class, tag.getString("pending"), Channel.NONE);
+        i.severity = tag.getDouble("severity");
+        i.villageId = tag.contains("village") ? tag.getInt("village") : -1;
+        return i;
     }
 
     private static <E extends Enum<E>> E parse(Class<E> type, String name, E fallback) {
