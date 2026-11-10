@@ -37,6 +37,19 @@ public final class InfidelityConfig {
     public static final ModConfigSpec.IntValue ONLOOKER_RADIUS;
     public static final ModConfigSpec.BooleanValue PRIVACY_INTERRUPTS_SESSIONS;
 
+    // Infidelity
+    public static final ModConfigSpec.DoubleValue PROMISED_SEVERITY;
+    public static final ModConfigSpec.DoubleValue COMMITTED_SEVERITY;
+    public static final ModConfigSpec.DoubleValue INITIATED_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue WAS_ASKED_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue WITNESSED_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue REPEAT_STEP;
+    public static final ModConfigSpec.DoubleValue OTHER_PARTY_SHARE;
+    public static final ModConfigSpec.IntValue HEARTS_PER_SEVERITY;
+    public static final ModConfigSpec.DoubleValue BREAKUP_THRESHOLD;
+    public static final ModConfigSpec.DoubleValue GRIEVANCE_DECAY_PER_DAY;
+    public static final ModConfigSpec.DoubleValue REFUSE_INTIMACY_GRIEVANCE;
+
     // Villager offers
     public static final ModConfigSpec.BooleanValue VILLAGER_OFFERS;
     public static final ModConfigSpec.IntValue OFFER_CHECK_SECONDS;
@@ -155,6 +168,70 @@ public final class InfidelityConfig {
             .comment("Villagers who care about privacy stop if someone comes into view during a session.")
             .translation(KEY + "privacyInterruptsSessions")
             .define("privacyInterruptsSessions", true);
+
+        b.pop();
+
+        b.comment("Cheating and its consequences. Severity of a discovered incident =",
+                "tier x who initiated x how it was found x (1 + repeatStep x earlier offenses against the same partner).",
+                "Only villager partners react; player partners are left to the players.")
+            .translation(KEY + "infidelity")
+            .push("infidelity");
+
+        PROMISED_SEVERITY = b
+            .comment("Base severity when the cheater was promised.")
+            .translation(KEY + "promisedSeverity")
+            .defineInRange("promisedSeverity", 1.0, 0.0, 10.0);
+
+        COMMITTED_SEVERITY = b
+            .comment("Base severity when the cheater was engaged or married (they count the same).")
+            .translation(KEY + "committedSeverity")
+            .defineInRange("committedSeverity", 2.0, 0.0, 10.0);
+
+        INITIATED_MULTIPLIER = b
+            .comment("Multiplier when the cheater asked (or offered) first.")
+            .translation(KEY + "initiatedMultiplier")
+            .defineInRange("initiatedMultiplier", 1.25, 0.0, 5.0);
+
+        WAS_ASKED_MULTIPLIER = b
+            .comment("Multiplier when the cheater was the one asked.")
+            .translation(KEY + "wasAskedMultiplier")
+            .defineInRange("wasAskedMultiplier", 0.85, 0.0, 5.0);
+
+        WITNESSED_MULTIPLIER = b
+            .comment("Multiplier when the partner saw it happen.")
+            .translation(KEY + "witnessedMultiplier")
+            .defineInRange("witnessedMultiplier", 1.5, 0.0, 5.0);
+
+        REPEAT_STEP = b
+            .comment("Added to the multiplier for each earlier discovered offense against the same partner. Never fades.")
+            .translation(KEY + "repeatStep")
+            .defineInRange("repeatStep", 0.5, 0.0, 5.0);
+
+        OTHER_PARTY_SHARE = b
+            .comment("Share of the severity the wronged partner also holds against the person their partner cheated with.")
+            .translation(KEY + "otherPartyShare")
+            .defineInRange("otherPartyShare", 0.6, 0.0, 2.0);
+
+        HEARTS_PER_SEVERITY = b
+            .comment("Hearts lost per point of severity (players only; MCA has no hearts between villagers).")
+            .translation(KEY + "heartsPerSeverity")
+            .defineInRange("heartsPerSeverity", 15, 0, 100);
+
+        BREAKUP_THRESHOLD = b
+            .comment("Grievance at which the wronged partner ends the relationship. Scaled by her forgiveness",
+                "(personality: about 0.6 for prickly, 1.4 for warm). A first witnessed affair while married is about 3.75.")
+            .translation(KEY + "breakupThreshold")
+            .defineInRange("breakupThreshold", 5.0, 0.5, 50.0);
+
+        GRIEVANCE_DECAY_PER_DAY = b
+            .comment("Grievance that fades per Minecraft day, also scaled by forgiveness.")
+            .translation(KEY + "grievanceDecayPerDay")
+            .defineInRange("grievanceDecayPerDay", 0.25, 0.0, 10.0);
+
+        REFUSE_INTIMACY_GRIEVANCE = b
+            .comment("At or above this grievance, a villager won't be intimate with that person (or make offers to them).")
+            .translation(KEY + "refuseIntimacyGrievance")
+            .defineInRange("refuseIntimacyGrievance", 1.0, 0.0, 50.0);
 
         b.pop();
 

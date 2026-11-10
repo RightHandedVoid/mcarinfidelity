@@ -15,6 +15,7 @@ import net.righthandedvoid.infidelity.intimacy.IntimacyRules;
 import net.righthandedvoid.infidelity.intimacy.Privacy;
 import net.righthandedvoid.infidelity.cycle.FertilityCycle;
 import net.righthandedvoid.infidelity.optin.OptIn;
+import net.righthandedvoid.infidelity.affair.Grievances;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 
 import java.util.ArrayList;
@@ -264,6 +265,13 @@ public final class ConsentManager {
         EligibilityResult eligibility = IntimacyRules.check(initiator, villager);
         if (!eligibility.allowed()) {
             initiator.sendSystemMessage(villagerDeclineMessage(villager, eligibility));
+            finish(req, ConsentRequest.Status.DECLINED, server);
+            return;
+        }
+
+        // Still hurt from being cheated on (by you, or with you): a firm no, with the usual cooldown.
+        if (Grievances.refusesIntimacy(villager, initiator.getUUID())) {
+            gray(initiator, villager.getName().getString() + " isn't ready to forgive you.");
             finish(req, ConsentRequest.Status.DECLINED, server);
             return;
         }

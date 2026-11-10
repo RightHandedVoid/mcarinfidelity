@@ -12,6 +12,9 @@ import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 import net.righthandedvoid.infidelity.pregnancy.Gestation;
 import net.righthandedvoid.infidelity.cycle.FertilityCycle;
 import net.righthandedvoid.infidelity.consent.VillagerOffers;
+import net.righthandedvoid.infidelity.affair.AffairLedger;
+import net.righthandedvoid.infidelity.affair.Grievances;
+import net.righthandedvoid.infidelity.affair.Incident;
 import net.righthandedvoid.infidelity.pregnancy.PregnancyData;
 import net.righthandedvoid.infidelity.pregnancy.PregnancyManager;
 import net.minecraft.world.entity.LivingEntity;
@@ -37,6 +40,8 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
  *   /intimacydebug privacy <villager> [home|private|anywhere|reroll]  -> shows/sets place preference and checks it here
  *   /intimacydebug cycle <target> [day <n>]  -> shows the cycle and conception chance, or sets today's cycle day
  *   /intimacydebug offer <villager>          -> she walks over and makes an offer now (skips chance and cooldown)
+ *   /intimacydebug affairs <villager>        -> her grievances and the incidents involving her
+ *   /intimacydebug forgive <villager>        -> clears her grievances (offense history included)
  *   /intimacydebug conceive <target>        -> conception between you and target, ignoring chance (other gates apply)
  *   /intimacydebug pregnancy <target> [due|clear]  -> shows pregnancy state, skips to birth, or clears it
  *
@@ -93,6 +98,12 @@ public final class IntimacyDebugCommand {
             .then(Commands.literal("offer")
                 .then(Commands.argument("target", EntityArgument.entity())
                     .executes(ctx -> forceOffer(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
+            .then(Commands.literal("affairs")
+                .then(Commands.argument("target", EntityArgument.entity())
+                    .executes(ctx -> affairs(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
+            .then(Commands.literal("forgive")
+                .then(Commands.argument("target", EntityArgument.entity())
+                    .executes(ctx -> forgive(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
             .then(Commands.literal("conceive")
                 .then(Commands.argument("target", EntityArgument.entity())
                     .executes(ctx -> conceive(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
@@ -202,6 +213,45 @@ public final class IntimacyDebugCommand {
             + " | place: " + Privacy.check(villager, player)
             + " | move state: " + villager.getVillagerBrain().getMoveState());
         reply(source, VillagerOffers.forceApproach(player, villager) ? "She's on her way." : "She's already walking somewhere.");
+        return 1;
+    }
+
+    private static int affairs(CommandSourceStack source, Entity target) {
+        if (!(target instanceof VillagerEntityMCA villager)) {
+            reply(source, "Target must be an MCA villager.");
+            return 0;
+        }
+        var server = source.getServer();
+        var tree = net.conczin.mca.server.world.data.FamilyTree.get(server.overworld());
+        java.util.function.Function<java.util.UUID, String> name = id -> {
+            ServerPlayer p = server.getPlayerList().getPlayer(id);
+            if (p != null) return p.getName().getString();
+            return tree.getOrEmpty(id).map(n -> n.getName()).orElse(id.toString().substring(0, 8));
+        };
+
+        reply(source, villager.getName().getString() + " | forgiveness x" + Grievances.forgiveness(villager)
+            + " | partner: " + villager.getRelationships().getPartnerUUID().map(name).orElse("none"));
+        var grievances = Grievances.all(villager);
+        if (grievances.isEmpty()) reply(source, "No grievances.");
+        grievances.forEach((id, g) -> reply(source, "  vs " + name.apply(id) + ": "
+            + Math.round(g.score() * 100) / 100.0 + " (offenses " + g.offenses() + ")"));
+
+        for (Incident i : AffairLedger.get(server).involving(villager.getUUID())) {
+            reply(source, "  incident: " + name.apply(i.cheater) + " cheated on " + name.apply(i.wronged)
+                + " with " + name.apply(i.other) + " | " + i.tier + (i.cheaterInitiated ? ", initiated" : ", was asked")
+                + " | " + (i.discovered() ? "discovered: " + i.discoveredBy() : "undiscovered")
+                + " | witnesses: " + i.witnesses().size());
+        }
+        return 1;
+    }
+
+    private static int forgive(CommandSourceStack source, Entity target) {
+        if (!(target instanceof VillagerEntityMCA villager)) {
+            reply(source, "Target must be an MCA villager.");
+            return 0;
+        }
+        Grievances.clear(villager);
+        reply(source, villager.getName().getString() + " has forgiven everyone.");
         return 1;
     }
 

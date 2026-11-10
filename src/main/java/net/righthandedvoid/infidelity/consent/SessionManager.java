@@ -14,6 +14,7 @@ import net.righthandedvoid.infidelity.RelationshipContext;
 import net.righthandedvoid.infidelity.intimacy.IntimacyNetwork;
 import net.righthandedvoid.infidelity.intimacy.IntimacyRules;
 import net.righthandedvoid.infidelity.intimacy.Privacy;
+import net.righthandedvoid.infidelity.affair.AffairManager;
 import net.righthandedvoid.infidelity.preference.PrivacyPreference;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 import net.righthandedvoid.infidelity.optin.OptIn;
@@ -87,6 +88,10 @@ public final class SessionManager {
         BY_PARTICIPANT.put(session.initiator, session.id);
         BY_PARTICIPANT.put(session.partner, session.id);
 
+        // Silently records any cheating; discovery happens later (or right away, if the spouse is watching).
+        UUID askedFirst = req.initiatorIsVillager ? partnerId : playerId;
+        AffairManager.onSessionStart(session.id, playerId, partnerId, askedFirst, session.protectionUsed, server);
+
         sendState(server, session, true);
     }
 
@@ -108,6 +113,8 @@ public final class SessionManager {
         for (IntimacySession session : new ArrayList<>(BY_ID.values())) {
             if (!stillValid(session, server)) {
                 end(session, EndReason.INTERRUPTED, server, null);
+            } else if (now % 20 == 0 && caughtByPartner(session, server)) {
+                end(session, EndReason.INTERRUPTED, server, null);
             } else if (now % 20 == 0 && noticedOnlooker(session, server)) {
                 end(session, EndReason.INTERRUPTED, server, null);
             } else if (now - session.startTick >= session.durationTicks) {
@@ -127,6 +134,7 @@ public final class SessionManager {
     static void clear() {
         BY_ID.clear();
         BY_PARTICIPANT.clear();
+        AffairManager.clear();
     }
 
     // =====================================================================
@@ -145,10 +153,17 @@ public final class SessionManager {
         return partner != null && IntimacyRules.check(initiator, partner).allowed();
     }
 
-    /**
-     * Villagers who care about privacy stop if someone comes into view. Checked once a second.
-     * (Witnessed discovery will hook in here later, e.g. when the onlooker is her spouse.)
-     */
+    /** The wronged spouse walked in. Checked before the privacy stop, so being seen by them always counts. */
+    private static boolean caughtByPartner(IntimacySession session, MinecraftServer server) {
+        ServerPlayer initiator = server.getPlayerList().getPlayer(session.initiator);
+        Entity partner = session.partnerIsVillager
+            ? resolve(server, session.dimension, session.partner)
+            : server.getPlayerList().getPlayer(session.partner);
+        if (initiator == null || !(partner instanceof net.minecraft.world.entity.LivingEntity living)) return false;
+        return AffairManager.checkWitnesses(session.id, initiator, living, server);
+    }
+
+    /** Villagers who care about privacy stop if someone comes into view. Checked once a second. */
     private static boolean noticedOnlooker(IntimacySession session, MinecraftServer server) {
         if (!session.partnerIsVillager || !InfidelityConfig.PRIVACY_INTERRUPTS_SESSIONS.get()) return false;
         ServerPlayer initiator = server.getPlayerList().getPlayer(session.initiator);
@@ -173,6 +188,7 @@ public final class SessionManager {
 
     private static void end(IntimacySession session, EndReason reason, MinecraftServer server, UUID endedBy) {
         if (session.ended) return;
+        AffairManager.onSessionEnd(session.id);
         session.ended = true;
         BY_ID.remove(session.id);
         BY_PARTICIPANT.remove(session.initiator, session.id);
