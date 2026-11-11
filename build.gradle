@@ -19,6 +19,10 @@ sourceSets.main.resources {
 }
 
 repositories {
+    maven {
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
+    }
 }
 
 base {
@@ -84,6 +88,8 @@ configurations {
 dependencies {
     implementation files("libs/mca-neoforge-7.7.36-beta.3+1.21.1.jar")
     implementation files("libs/townstead-0.8.0+1.21.1.jar")
+
+    implementation("maven.modrinth:vvuO3ImH:yohfFbgD")
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

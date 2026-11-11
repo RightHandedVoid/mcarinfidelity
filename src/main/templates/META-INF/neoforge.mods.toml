@@ -52,3 +52,10 @@ config="${mod_id}.mixins.json"
     versionRange="[0.8.0+1.21.1,)"
     ordering="AFTER"
     side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="curios"
+    type="required"
+    versionRange="[9.5.1+1.21.1,)"
+    ordering="AFTER"
+    side="BOTH"
