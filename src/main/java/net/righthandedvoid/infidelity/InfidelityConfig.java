@@ -64,6 +64,15 @@ public final class InfidelityConfig {
     public static final ModConfigSpec.BooleanValue EXILE_GUARDS_HOSTILE;
     public static final ModConfigSpec.IntValue EXILE_WARN_SECONDS;
 
+    // Protection
+    public static final ModConfigSpec.BooleanValue ALLOW_SAFE_DAYS;
+    public static final ModConfigSpec.IntValue BIRTH_CONTROL_DAYS;
+    public static final ModConfigSpec.IntValue DIAPHRAGM_STIRS;
+    public static final ModConfigSpec.DoubleValue MALE_CONDOM_FAILURE;
+    public static final ModConfigSpec.DoubleValue FEMALE_CONDOM_FAILURE;
+    public static final ModConfigSpec.DoubleValue DIAPHRAGM_FAILURE;
+    public static final ModConfigSpec.DoubleValue BIRTH_CONTROL_FAILURE;
+
     // Villager offers
     public static final ModConfigSpec.BooleanValue VILLAGER_OFFERS;
     public static final ModConfigSpec.IntValue OFFER_CHECK_SECONDS;
@@ -310,6 +319,48 @@ public final class InfidelityConfig {
             .comment("How often exiled players inside the village are told to leave.")
             .translation(KEY + "exileWarnSeconds")
             .defineInRange("exileWarnSeconds", 30, 5, 600);
+
+        b.pop();
+
+        b.comment("Protection items. A session 'with protection' uses birth control, a worn diaphragm, or a condom from",
+                "either person; with none of those it can still go ahead on a safe day (outside her fertile window).")
+            .translation(KEY + "protection")
+            .push("protection");
+
+        ALLOW_SAFE_DAYS = b
+            .comment("Let 'with protection' go ahead without any item outside the fertile window, relying on the cycle.")
+            .translation(KEY + "allowSafeDays")
+            .define("allowSafeDays", true);
+
+        BIRTH_CONTROL_DAYS = b
+            .comment("Minecraft days one pill protects for.")
+            .translation(KEY + "birthControlDays")
+            .defineInRange("birthControlDays", 3, 1, 30);
+
+        DIAPHRAGM_STIRS = b
+            .comment("Right-clicks on a water cauldron needed to wash a diaphragm dropped into it.")
+            .translation(KEY + "diaphragmStirs")
+            .defineInRange("diaphragmStirs", 4, 1, 20);
+
+        MALE_CONDOM_FAILURE = b
+            .comment("Chance a condom fails. A failure means conception is rolled as normal.")
+            .translation(KEY + "maleCondomFailure")
+            .defineInRange("maleCondomFailure", 0.02, 0.0, 1.0);
+
+        FEMALE_CONDOM_FAILURE = b
+            .comment("Chance an internal condom fails.")
+            .translation(KEY + "femaleCondomFailure")
+            .defineInRange("femaleCondomFailure", 0.05, 0.0, 1.0);
+
+        DIAPHRAGM_FAILURE = b
+            .comment("Chance a diaphragm fails.")
+            .translation(KEY + "diaphragmFailure")
+            .defineInRange("diaphragmFailure", 0.06, 0.0, 1.0);
+
+        BIRTH_CONTROL_FAILURE = b
+            .comment("Chance birth control fails.")
+            .translation(KEY + "birthControlFailure")
+            .defineInRange("birthControlFailure", 0.01, 0.0, 1.0);
 
         b.pop();
 

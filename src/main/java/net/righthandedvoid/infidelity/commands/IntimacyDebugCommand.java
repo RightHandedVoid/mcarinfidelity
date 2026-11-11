@@ -17,6 +17,7 @@ import net.righthandedvoid.infidelity.affair.Grievances;
 import net.righthandedvoid.infidelity.affair.Incident;
 import net.righthandedvoid.infidelity.affair.AffairManager;
 import net.righthandedvoid.infidelity.affair.Exile;
+import net.righthandedvoid.infidelity.protection.Protection;
 import net.righthandedvoid.infidelity.pregnancy.PregnancyData;
 import net.righthandedvoid.infidelity.pregnancy.PregnancyManager;
 import net.minecraft.world.entity.LivingEntity;
@@ -47,6 +48,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
  *   /intimacydebug discover <villager>       -> reveals every undiscovered incident where she's the wronged one (as gossip)
  *   /intimacydebug exile <player>            -> lists villages that exiled the player
  *   /intimacydebug pardon <player>           -> lifts every exile on the player
+ *   /intimacydebug protection <target>       -> what protection you and the target would use right now
  *   /intimacydebug conceive <target>        -> conception between you and target, ignoring chance (other gates apply)
  *   /intimacydebug pregnancy <target> [due|clear]  -> shows pregnancy state, skips to birth, or clears it
  *
@@ -118,6 +120,9 @@ public final class IntimacyDebugCommand {
             .then(Commands.literal("pardon")
                 .then(Commands.argument("player", EntityArgument.player())
                     .executes(ctx -> pardon(ctx.getSource(), EntityArgument.getPlayer(ctx, "player")))))
+            .then(Commands.literal("protection")
+                .then(Commands.argument("target", EntityArgument.entity())
+                    .executes(ctx -> protection(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
             .then(Commands.literal("conceive")
                 .then(Commands.argument("target", EntityArgument.entity())
                     .executes(ctx -> conceive(ctx.getSource(), EntityArgument.getEntity(ctx, "target")))))
@@ -298,6 +303,18 @@ public final class IntimacyDebugCommand {
         boolean any = Exile.get(source.getServer()).pardon(player.getUUID(), null);
         reply(source, any ? "Pardoned " + player.getName().getString() + "." : "Nothing to pardon.");
         return any ? 1 : 0;
+    }
+
+    private static int protection(CommandSourceStack source, Entity target) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!(target instanceof LivingEntity living) || target == player) {
+            reply(source, "Target must be another player or a villager.");
+            return 0;
+        }
+        var plan = Protection.find(player, living);
+        reply(source, "Protection: " + plan.map(p -> p.method().name()).orElse("NONE (a protected request would not happen)")
+            + " | your pill days: " + Protection.pillDaysLeft(player) + " | target's: " + Protection.pillDaysLeft(living));
+        return 1;
     }
 
     private static int conceive(CommandSourceStack source, Entity target) throws CommandSyntaxException {

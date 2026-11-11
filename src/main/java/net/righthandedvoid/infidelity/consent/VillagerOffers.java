@@ -21,6 +21,7 @@ import net.righthandedvoid.infidelity.optin.OptIn;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 import net.righthandedvoid.infidelity.affair.Grievances;
 import net.righthandedvoid.infidelity.affair.Exile;
+import net.righthandedvoid.infidelity.protection.Protection;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -245,6 +246,13 @@ public final class VillagerOffers {
     /** Protection: what the player originally asked for (escorts), or whatever she wants. */
     private static void offer(VillagerEntityMCA villager, ServerPlayer player, boolean playerWantedProtection) {
         boolean protection = playerWantedProtection || VillagerPreferences.wantsProtection(villager, player);
+        // She won't offer "with protection" when there's none to be had; if you asked her, she says why.
+        if (protection && Protection.find(villager, player).isEmpty()) {
+            if (playerWantedProtection) {
+                gray(player, villager.getName().getString() + " would, but neither of you has protection, and it isn't a safe day.");
+            }
+            return;
+        }
         ConsentManager.offerFromVillager(villager, player, protection);
     }
 

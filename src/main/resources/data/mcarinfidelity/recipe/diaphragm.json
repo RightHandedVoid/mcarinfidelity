@@ -1,0 +1,3 @@
+{ "type": "minecraft:crafting_shapeless", "category": "misc",
+  "ingredients": [ { "item": "minecraft:slime_ball" }, { "item": "minecraft:slime_ball" }, { "item": "minecraft:string" } ],
+  "result": { "id": "mcarinfidelity:diaphragm", "count": 1 } }

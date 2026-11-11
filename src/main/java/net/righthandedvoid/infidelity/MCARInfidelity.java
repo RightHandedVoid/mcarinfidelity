@@ -14,6 +14,8 @@ import net.righthandedvoid.infidelity.pregnancy.PregnancyData;
 import net.righthandedvoid.infidelity.cycle.FertilityCycle;
 import net.righthandedvoid.infidelity.item.ModItems;
 import net.righthandedvoid.infidelity.affair.Grievances;
+import net.righthandedvoid.infidelity.item.ModComponents;
+import net.righthandedvoid.infidelity.protection.Protection;
 
 @Mod(MCARInfidelity.MODID)
 public class MCARInfidelity {
@@ -27,6 +29,8 @@ public class MCARInfidelity {
         FertilityCycle.ATTACHMENT_TYPES.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
         Grievances.ATTACHMENT_TYPES.register(modEventBus);
+        Protection.ATTACHMENT_TYPES.register(modEventBus);
+        ModComponents.COMPONENTS.register(modEventBus);
         modContainer.registerConfig(ModConfig.Type.SERVER, InfidelityConfig.SPEC);
     }
 }

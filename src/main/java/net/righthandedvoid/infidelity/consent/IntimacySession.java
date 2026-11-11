@@ -24,6 +24,8 @@ public final class IntimacySession {
     public final boolean showScene;
     /** The villager made the offer. Matters later for who initiated an affair. */
     public final boolean villagerInitiated;
+    /** What protection was actually used, decided and used up at the start. Null when unprotected. */
+    public net.righthandedvoid.infidelity.protection.Protection.Method protectionMethod;
 
     boolean ended;
 

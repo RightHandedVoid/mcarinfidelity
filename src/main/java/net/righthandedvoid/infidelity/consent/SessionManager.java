@@ -15,6 +15,7 @@ import net.righthandedvoid.infidelity.intimacy.IntimacyNetwork;
 import net.righthandedvoid.infidelity.intimacy.IntimacyRules;
 import net.righthandedvoid.infidelity.intimacy.Privacy;
 import net.righthandedvoid.infidelity.affair.AffairManager;
+import net.righthandedvoid.infidelity.protection.Protection;
 import net.righthandedvoid.infidelity.preference.PrivacyPreference;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 import net.righthandedvoid.infidelity.optin.OptIn;
@@ -87,6 +88,26 @@ public final class SessionManager {
         BY_ID.put(session.id, session);
         BY_PARTICIPANT.put(session.initiator, session.id);
         BY_PARTICIPANT.put(session.partner, session.id);
+
+        // Use up whatever protection they have (checked when it was accepted) and tell the players what it was.
+        if (session.protectionUsed) {
+            net.minecraft.world.entity.LivingEntity partnerEntity = partnerIsVillager
+                ? (resolve(server, req.dimension, partnerId) instanceof net.minecraft.world.entity.LivingEntity l ? l : null)
+                : server.getPlayerList().getPlayer(partnerId);
+            var plan = partnerEntity == null ? java.util.Optional.<Protection.Plan>empty() : Protection.find(initiator, partnerEntity);
+            plan.ifPresent(p -> {
+                session.protectionMethod = p.method();
+                p.useUp().run();
+                if (p.method() != Protection.Method.NOT_NEEDED) {
+                    String text = "Protection: " + p.method().label + ".";
+                    initiator.sendSystemMessage(Component.literal(text).withStyle(ChatFormatting.GRAY));
+                    if (partnerEntity instanceof ServerPlayer other) {
+                        other.sendSystemMessage(Component.literal(text).withStyle(ChatFormatting.GRAY));
+                    }
+                }
+            });
+            if (plan.isEmpty()) session.protectionMethod = Protection.Method.SAFE_DAY;   // changed since accepted: rely on the cycle
+        }
 
         // Silently records any cheating; discovery happens later (or right away, if the spouse is watching).
         UUID askedFirst = req.initiatorIsVillager ? partnerId : playerId;
@@ -220,8 +241,9 @@ public final class SessionManager {
             partner = server.getPlayerList().getPlayer(session.partner);
         }
 
-        // Silent either way; the carrier finds out later.
-        if (partner != null && !session.protectionUsed) {
+        // Silent either way; the carrier finds out later. Protection can fail; relying on a safe day
+        // means conception is rolled as usual (the cycle makes it unlikely, not impossible).
+        if (partner != null && (!session.protectionUsed || Protection.failed(session.protectionMethod, initiator.getRandom()))) {
             PregnancyManager.tryConceive(initiator, partner, false);
         }
     }

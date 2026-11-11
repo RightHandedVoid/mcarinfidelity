@@ -8,6 +8,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.righthandedvoid.infidelity.EligibilityResult;
 import net.righthandedvoid.infidelity.intimacy.IntimacyNetwork;
@@ -17,6 +18,7 @@ import net.righthandedvoid.infidelity.cycle.FertilityCycle;
 import net.righthandedvoid.infidelity.optin.OptIn;
 import net.righthandedvoid.infidelity.affair.Grievances;
 import net.righthandedvoid.infidelity.affair.Exile;
+import net.righthandedvoid.infidelity.protection.Protection;
 import net.righthandedvoid.infidelity.preference.VillagerPreferences;
 
 import java.util.ArrayList;
@@ -315,6 +317,15 @@ public final class ConsentManager {
 
     private static void finish(ConsentRequest req, ConsentRequest.Status status, MinecraftServer server) {
         if (req.status != ConsentRequest.Status.PENDING) return;
+
+        // "With protection" needs actual protection, or at least a safe day. Otherwise it doesn't happen;
+        // they can ask again without protection if they both want to.
+        if (status == ConsentRequest.Status.ACCEPTED && req.protectionUsed) {
+            LivingEntity a = participant(server, req, req.initiator, req.initiatorIsVillager);
+            LivingEntity b = participant(server, req, req.target, req.targetIsVillager);
+            if (a == null || b == null || Protection.find(a, b).isEmpty()) status = ConsentRequest.Status.NO_PROTECTION;
+        }
+
         req.status = status;
         BY_ID.remove(req.id);
         PENDING_BY_TARGET.remove(req.target, req.id);
@@ -337,6 +348,14 @@ public final class ConsentManager {
         }
     }
 
+    private static LivingEntity participant(MinecraftServer server, ConsentRequest req, UUID id, boolean villager) {
+        if (!villager) return server.getPlayerList().getPlayer(id);
+        ServerLevel level = server.getLevel(req.dimension);
+        return level != null && level.getEntity(id) instanceof LivingEntity living ? living : null;
+    }
+
+    private static final String NO_PROTECTION_TEXT = "Neither of you has protection, and it isn't a safe day.";
+
     private static void onAccepted(ConsentRequest req, MinecraftServer server) {
         SessionManager.start(req, server);
     }
@@ -349,6 +368,7 @@ public final class ConsentManager {
             String text = switch (status) {
                 case ACCEPTED -> "You accepted " + name + "'s offer (" + protectionLabel(req.protectionUsed) + ").";
                 case DECLINED, NOT_HERE -> "You declined " + name + "'s offer.";
+                case NO_PROTECTION -> NO_PROTECTION_TEXT + " " + name + " would rather wait.";
                 case TIMED_OUT -> name + "'s offer passed.";
                 case CANCELLED -> name + "'s offer was withdrawn.";
                 case INVALIDATED -> name + "'s offer is off.";
@@ -367,6 +387,11 @@ public final class ConsentManager {
             switch (status) {
                 case ACCEPTED -> gray(initiator, acceptedText("They said yes", req));
                 case CANCELLED -> gray(initiator, "Request cancelled.");
+                case NO_PROTECTION -> {
+                    LivingEntity villager = participant(server, req, req.target, true);
+                    String name = villager != null ? villager.getName().getString() : "They";
+                    gray(initiator, name + " would, but neither of you has protection, and it isn't a safe day.");
+                }
                 case INVALIDATED -> gray(initiator, "Request no longer possible.");
                 default -> {}
             }
@@ -377,6 +402,7 @@ public final class ConsentManager {
         String toInitiator = switch (status) {
             case ACCEPTED -> acceptedText(targetName + " accepted", req);
             case DECLINED, NOT_HERE -> targetName + " declined your request.";
+            case NO_PROTECTION -> NO_PROTECTION_TEXT + " You could ask again without it.";
             case TIMED_OUT -> "Your request to " + targetName + " expired.";
             case CANCELLED -> "Request cancelled.";
             case INVALIDATED -> "Your request to " + targetName + " is no longer possible.";
@@ -385,6 +411,7 @@ public final class ConsentManager {
         String toTarget = switch (status) {
             case ACCEPTED -> "You accepted " + initiatorName + "'s request (" + protectionLabel(req.protectionUsed) + ").";
             case DECLINED, NOT_HERE -> "You declined " + initiatorName + "'s request.";
+            case NO_PROTECTION -> NO_PROTECTION_TEXT;
             case TIMED_OUT -> initiatorName + "'s request expired.";
             case CANCELLED -> initiatorName + "'s request was cancelled.";
             case INVALIDATED -> initiatorName + "'s request is no longer possible.";
